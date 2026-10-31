@@ -1,114 +1,152 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>VESSEL MUSIC</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#14121f;--pn:#241f3a;--ln:#5b4fa0;--fg:#e8e2ff;--ac:#ffcf4d;--dim:#8a82b8;--hi:#6ee7b7}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--fg);font:10px/1.6 'Press Start 2P',monospace,sans-serif;image-rendering:pixelated;padding:12px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
-.w{max-width:760px;margin:auto;background:var(--pn);border:4px solid var(--ln);box-shadow:6px 6px 0 #000;padding:12px}
-h1{font-size:14px;margin:0 0 8px;color:var(--ac)}
-.np{border:2px solid var(--ln);background:#000;padding:8px;margin-bottom:10px;min-height:34px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-canvas{display:block;width:100%;height:auto;border:2px solid var(--ln);background:#000;image-rendering:pixelated}
-.row{display:flex;gap:10px;margin-top:10px;align-items:stretch}
-.btn{font:inherit;color:var(--fg);background:var(--bg);border:3px solid var(--ln);padding:10px;min-width:44px;cursor:pointer;box-shadow:3px 3px 0 #000}
-.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}.btn.on{background:var(--ac);color:#000}
-.sl{flex:1;position:relative;height:44px;border:3px solid var(--ln);background:var(--bg);touch-action:none;cursor:pointer;user-select:none}
-.sl .f{position:absolute;left:0;top:0;bottom:0;background:var(--ln);opacity:.6;pointer-events:none}
-.sl .k{position:absolute;top:-3px;bottom:-3px;width:14px;background:var(--ac);border:2px solid #000;pointer-events:none}
-.sl .t{position:absolute;left:6px;top:0;line-height:38px;font-size:8px;pointer-events:none;color:var(--fg);text-shadow:1px 1px 0 #000}
-.tm{display:flex;justify-content:space-between;margin-top:4px;color:var(--dim);font-size:8px}
-#list{margin-top:10px;max-height:240px;overflow:auto;border:2px solid var(--ln);background:#000}
-#list div{padding:8px;cursor:pointer;border-bottom:1px solid #222}#list div.cur{background:var(--ln);color:var(--ac)}
-.st{color:var(--dim);font-size:8px;margin-top:8px}
-@media(max-width:520px){.row{flex-wrap:wrap}.sl{flex:1 1 40%}}
-</style></head><body><div class="w">
-<h1>VESSEL MUSIC</h1>
-<div class="np" id="np">LOADING...</div>
-<canvas id="cv" width="244" height="64"></canvas>
-<div class="row"><button class="btn" id="pp">PLAY</button>
-<div class="sl" id="vol"><div class="f"></div><div class="k"></div><div class="t" id="vt">VOLUME</div></div>
-<div class="sl" id="pit"><div class="f"></div><div class="k"></div><div class="t" id="pt">PITCH</div></div></div>
-<div class="row"><div class="sl" id="seek"><div class="f"></div><div class="k"></div></div><button class="btn" id="lp">LOOP</button></div>
-<div class="tm"><span id="t1">0:00</span><span id="t2">0:00</span></div>
-<div id="list"></div>
-<div class="st" id="st">drag the bar like a tape. drums + notes come from the .vsd files.</div>
-</div>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>MY MUSIC</title>
+<style>html,body{margin:0;height:100%;background:#0a0c18;overflow:hidden;overscroll-behavior:none}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}</style>
+</head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const $=id=>document.getElementById(id);
-let ac,gain,tracks=[],cur=-1,buf=null,rev=null,vsd=null,pos=0,dur=0,playing=false,src=null,last=0,vol=.65,st=0,loop=false,scrub=null,seekF=0,fl=[0,0,0],lt=0,loadId=0;
+const cv=document.getElementById("c"),X=cv.getContext("2d");
+// ---- the game's 5x7 pixel font (font.c)
+const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
+const GI=c=>{if(c>=65&&c<=90)return c-65;if(c>=48&&c<=57)return 26+c-48;return[44,46,33,63,39,45,37,58].indexOf(c)>=0?36+[44,46,33,63,39,45,37,58].indexOf(c):-1};
+const tw=(s,c)=>s.length?s.length*6*c-c:0,th=c=>7*c;
+const rgb=(c,a=1)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+const mix=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
+const BASS=[80,170,255],MID=[110,230,160],LEAD=[255,140,200],KICK=[255,120,90],SNARE=[255,214,110],HAT=[110,220,235],HELD=[255,214,110],WH=[255,255,255],GREY=[130,138,170],LINE=[90,96,130],DARK=[14,18,36];
+function F(x,y,w,h,c,a=1){X.fillStyle=rgb(c,a);X.fillRect(x,y,w,h)}
+function T(s,x,y,cell,c){X.fillStyle=rgb(c);X.beginPath();s=String(s).toUpperCase();for(let i=0;i<s.length;i++){const g=GI(s.charCodeAt(i));if(g<0)continue;for(let r=0;r<7;r++)for(let k=0;k<5;k++)if(GL[g][r]&(16>>k))X.rect(x+i*6*cell+k*cell,y+r*cell,cell,cell)}X.fill()}
+function box(q,fill,line,la=1){F(q.x,q.y,q.w,q.h,line,la);F(q.x+bt,q.y+bt,q.w-2*bt,q.h-2*bt,fill)}
+const inr=(q,x,y)=>x>=q.x&&x<q.x+q.w&&y>=q.y&&y<q.y+q.h;
+// ---- state
+let ac,gain,an,fb,tracks=[],cur=-1,buf=null,rev=null,vsd=null,pos=0,dur=0,playing=false,src=null,lastT=0,vol=.65,st=0,loop=false,loadId=0,title="";
+let scrub=null,tgt=0,sp=0,gt=0,seekF=0,listScroll=0,listVel=0;
+const BANDS=24,EQR=16,LO=48,lvl=new Float32Array(BANDS),peak=new Float32Array(BANDS),hold=new Float32Array(BANDS),nv=new Float32Array(61),dr=[0,0,0],rg=[0,0,0];
 const rate=()=>Math.pow(2,st/12);
-function ctx(){if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();gain=ac.createGain();gain.gain.value=vol;gain.connect(ac.destination)}if(ac.state!=="running")ac.resume()}
+function ctx(){if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();gain=ac.createGain();gain.gain.value=vol;an=ac.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=0;fb=new Uint8Array(an.frequencyBinCount);gain.connect(an);an.connect(ac.destination)}if(ac.state!=="running")ac.resume()}
 const fmt=s=>{s=Math.max(0,s|0);return(s/60|0)+":"+String(s%60).padStart(2,"0")};
-// ---- sliders
-function slider(el,get,set,drag){
-  const upd=()=>{const f=get(),w=el.clientWidth-6;el.querySelector(".k").style.left=(f*(w-14))+"px";el.querySelector(".f").style.width=(f*(w-14)+7)+"px"};
-  let on=false;const fx=e=>{const r=el.getBoundingClientRect();return Math.min(1,Math.max(0,(e.clientX-r.left-10)/(r.width-26)))};
-  el.onpointerdown=e=>{on=true;el.setPointerCapture(e.pointerId);set(fx(e),0);upd()};
-  el.onpointermove=e=>{if(on){set(fx(e),1);upd()}};
-  el.onpointerup=el.onpointercancel=e=>{if(on){on=false;set(fx(e),2);upd()}};
-  el.upd=upd;return upd}
-const uVol=slider($("vol"),()=>vol,f=>{vol=f;if(gain)gain.gain.value=f;$("vt").textContent="VOLUME "+Math.round(f*100)+"%"});
-const uPit=slider($("pit"),()=>(st+20)/40,f=>{st=Math.round((f*40-20)*2)/2;$("pt").textContent="PITCH "+(st>0?"+":"")+st;if(src&&!scrub)src.playbackRate.value=rate()});
-$("vt").textContent="VOLUME 65%";$("pt").textContent="PITCH 0";
-// ---- tape seek: grains of the track played at the speed of the finger, backwards from a reversed copy
-const sk=$("seek");let tgt=0,sp=0,gt=0;
-sk.onpointerdown=e=>{if(!buf)return;ctx();sk.setPointerCapture(e.pointerId);stopSrc();scrub={was:playing};tgt=pos=skf(e)*dur;sp=0;gt=0;mkRev()};
-sk.onpointermove=e=>{if(scrub)tgt=skf(e)*dur};
-sk.onpointerup=sk.onpointercancel=e=>{if(!scrub)return;const w=scrub.was;scrub=null;pos=Math.min(dur-.01,Math.max(0,skf(e)*dur));if(w)play();else playing=false;upPlay()};
-function skf(e){const r=sk.getBoundingClientRect();return Math.min(1,Math.max(0,(e.clientX-r.left-10)/(r.width-26)))}
-function mkRev(){if(rev||!buf)return;rev=ac.createBuffer(buf.numberOfChannels,buf.length,buf.sampleRate);for(let c=0;c<buf.numberOfChannels;c++){const a=buf.getChannelData(c),b=rev.getChannelData(c);for(let i=0,n=a.length;i<n;i++)b[i]=a[n-1-i]}}
-function grain(v,dt){ // v = signed tape speed (x normal)
-  const a=Math.abs(v);if(a<.04)return;const G=.07,t=ac.currentTime,b=v>0?buf:rev,off=v>0?pos:dur-pos;
-  const len=Math.min(G*a,(b.duration-off)-.001);if(len<=.005)return;
-  const s=ac.createBufferSource(),g=ac.createGain();s.buffer=b;s.playbackRate.value=a*(1);
-  const real=len/a;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+Math.min(.012,real/3));g.gain.setValueAtTime(1,t+real-.012>t?t+real-.012:t+real/2);g.gain.linearRampToValueAtTime(0,t+real);
-  s.connect(g);g.connect(gain);s.start(t,off,len)}
-// ---- playback
+// ---- layout (musicwin.c, full screen, no map/custom switch)
+let W,H,u,bt,pad,g,cell,c2,cb,R={},hi,nw,kw,kx0,eq={},rowh,lrows,dpr=1;
+const WI=[0,-1,1,-1,2,3,-1,4,-1,5,-1,6],isW=m=>WI[m%12]>=0,wIdx=m=>((m-LO)/12|0)*7+WI[m%12];
+function layout(){dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;X.setTransform(dpr,0,0,dpr,0,0);
+  u=Math.min(W,H)/360;const I=Math.round;bt=Math.max(1,I(1.5*u));pad=Math.max(3,I(6*u));g=Math.max(2,I(3*u));cell=Math.max(2,I(1.7*u));c2=Math.max(2,I(1.3*u));cb=Math.max(8,I(14*u));
+  hi=W<H?96:108;nw=wIdx(hi)+1;const hdr=pad+th(cell)+cell*2+th(cell)+pad,laneH=th(c2)+g+I(28*u),hintH=th(c2)+g,ctrl=Math.max(18,I(28*u));rowh=Math.max(th(c2)+4,I(18*u));
+  let pianoH=I(80*u),eqH=I(110*u);lrows=2;const base=hdr+ctrl+pad+ctrl+pad+pad+laneH+pad+hintH+pad;
+  let free=H-base-eqH-pianoH-2*bt-2*rowh;if(free>0){const add=Math.floor(free*.5/rowh);lrows+=add;free-=add*rowh;eqH+=Math.floor(free*.6);pianoH+=free-Math.floor(free*.6)}
+  else{const cut=-free,e=Math.min(cut,eqH-I(30*u));eqH-=e;pianoH-=cut-e}
+  const ix=pad,iw=W-2*pad;let y=hdr;
+  eq.gap=1;eq.q=Math.max(2,Math.floor((eqH-(EQR-1))/EQR));eqH=EQR*eq.q+EQR-1;eq.bg=Math.max(1,Math.floor(eq.q/3));eq.bw=Math.max(1,Math.floor((iw-(BANDS-1)*eq.bg)/BANDS));const ew=BANDS*eq.bw+(BANDS-1)*eq.bg;eq.x=ix+Math.floor((iw-ew)/2);eq.y=y;eq.h=eqH;y+=eqH+pad;
+  R.pause={x:ix,y,w:ctrl,h:ctrl};const sw=iw-ctrl-g*2,half=Math.floor((sw-g*2)/2);R.vol={x:ix+ctrl+g*2,y,w:half,h:ctrl};R.pit={x:R.vol.x+half+g*2,y,w:sw-half-g*2,h:ctrl};y+=ctrl+pad;
+  const lw=cb+g*2+tw("LOOP",c2)+pad;R.loop={x:ix+iw-lw,y,w:lw,h:ctrl};R.seek={x:ix,y,w:iw-lw-g*2,h:ctrl};y+=ctrl+pad;
+  R.list={x:ix,y,w:iw,h:lrows*rowh+2*bt};y+=R.list.h+pad;R.lane={x:ix,y,w:iw,h:laneH};y+=laneH+pad;R.hint={x:ix,y,w:iw,h:hintH};y+=hintH;R.piano={x:ix,y,w:iw,h:H-y-pad};
+  kw=Math.max(2,Math.floor(iw/nw));kx0=ix+Math.floor((iw-kw*nw)/2);scrollMax();}
+function scrollMax(){const m=Math.max(0,tracks.length*rowh-(R.list.h-2*bt));listScroll=Math.min(listScroll,m);return m}
+const wr=m=>({x:kx0+wIdx(m)*kw,y:R.piano.y,w:kw,h:R.piano.h}),br=m=>{const bw=Math.floor(kw*.62),bh=Math.floor(R.piano.h*.62),b=kx0+(wIdx(m-1)+1)*kw;return{x:b-Math.floor(bw/2),y:R.piano.y,w:bw,h:bh}};
+const keyAt=(x,y)=>{for(let m=LO;m<=hi;m++)if(!isW(m)&&inr(br(m),x,y))return m;for(let m=LO;m<=hi;m++)if(isW(m)&&inr(wr(m),x,y))return m;return-1};
+// ---- playback + tape scrub
 function stopSrc(){if(src){src.onended=null;try{src.stop()}catch(e){}src=null}}
-function play(){if(!buf)return;ctx();stopSrc();if(pos>=dur-.05)pos=0;src=ac.createBufferSource();src.buffer=buf;src.playbackRate.value=rate();src.connect(gain);const me=src;src.onended=()=>{if(src!==me)return;src=null;if(loop){pos=0;play()}else if(cur<tracks.length-1)load(cur+1,true);else{playing=false;pos=0;upPlay()}};src.start(0,pos);last=ac.currentTime;playing=true;upPlay()}
-function pause(){stopSrc();playing=false;upPlay()}
-function upPlay(){$("pp").textContent=playing?"PAUSE":"PLAY";$("pp").classList.toggle("on",playing)}
-$("pp").onclick=()=>playing?pause():play();
-$("lp").onclick=()=>{loop=!loop;$("lp").classList.toggle("on",loop)};
-async function load(i,auto){
-  const id=++loadId;stopSrc();playing=false;cur=i;buf=rev=vsd=null;pos=0;dur=0;upPlay();render();
-  $("np").textContent="LOADING "+tracks[i].name+"...";ctx();
-  try{const r=await fetch(RAW+tracks[i].file);const ab=await r.arrayBuffer();const b=await ac.decodeAudioData(ab);if(id!==loadId)return;buf=b;dur=b.duration}catch(e){$("np").textContent="CANNOT PLAY "+tracks[i].name;return}
-  $("np").textContent="NOW PLAYING: "+tracks[i].name;$("t2").textContent=fmt(dur);
-  fetch(RAW+tracks[i].file.replace(/\.ogg$/,".vsd")).then(r=>r.ok?r.arrayBuffer():null).then(a=>{if(a&&id===loadId)vsd=parseVsd(a)}).catch(()=>{});
-  if(auto)play()}
+function play(){if(!buf)return;ctx();stopSrc();if(pos>=dur-.05)pos=0;const s=ac.createBufferSource();src=s;s.buffer=buf;s.playbackRate.value=rate();s.connect(gain);s.onended=()=>{if(src!==s)return;src=null;if(loop){pos=0;play()}else if(cur<tracks.length-1)load(cur+1,true);else{playing=false;pos=0}};s.start(0,pos);lastT=ac.currentTime;playing=true}
+function pause(){stopSrc();playing=false}
+function mkRev(){if(rev||!buf)return;rev=ac.createBuffer(buf.numberOfChannels,buf.length,buf.sampleRate);for(let c=0;c<buf.numberOfChannels;c++){const a=buf.getChannelData(c),b=rev.getChannelData(c);for(let i=0,n=a.length;i<n;i++)b[i]=a[n-1-i]}}
+function grain(v){const a=Math.abs(v);if(a<.04)return;const G=.07,t=ac.currentTime,b=v>0?buf:rev,off=v>0?pos:dur-pos,len=Math.min(G*a,b.duration-off-.001);if(len<=.005)return;
+  const s=ac.createBufferSource(),gg=ac.createGain(),real=len/a,f=Math.min(.012,real/3);s.buffer=b;s.playbackRate.value=a;gg.gain.setValueAtTime(0,t);gg.gain.linearRampToValueAtTime(1,t+f);gg.gain.setValueAtTime(1,t+real-f);gg.gain.linearRampToValueAtTime(0,t+real);s.connect(gg);gg.connect(gain);s.start(t,off,len)}
+async function load(i,auto){const id=++loadId;stopSrc();playing=false;cur=i;buf=rev=vsd=null;pos=0;dur=0;title=tracks[i].name;ctx();
+  try{const ab=await(await fetch(RAW+tracks[i].file)).arrayBuffer();const b=await ac.decodeAudioData(ab);if(id!==loadId)return;buf=b;dur=b.duration}catch(e){title="CANNOT PLAY "+title;return}
+  fetch(RAW+tracks[i].file.replace(/\.ogg$/,".vsd")).then(r=>r.ok?r.arrayBuffer():null).then(a=>{if(a&&id===loadId)vsd=parseVsd(a)}).catch(()=>{});if(auto)play()}
 function parseVsd(ab){const d=new DataView(ab);if(d.getUint32(0,true)!==0x31445356)return null;const n=d.getUint32(4,true),m=d.getUint32(8,true),N=[],H=[];let o=16,md=0;
   for(let i=0;i<n;i++,o+=8){let p=d.getUint8(o+6);while(p<48)p+=12;while(p>=109)p-=12;const du=Math.max(30,d.getUint16(o+4,true));md=Math.max(md,du);N.push([d.getUint32(o,true)/1e3,du/1e3,p,d.getUint8(o+7)/255])}
-  for(let i=0;i<m;i++,o+=6)H.push([d.getUint32(o,true)/1e3,Math.min(2,d.getUint8(o+4)),d.getUint8(o+5)/255]);
-  N.sort((a,b)=>a[0]-b[0]);H.sort((a,b)=>a[0]-b[0]);return{N,H,md:md/1e3}}
-// ---- piano + drums on a 244x64 pixel canvas (C3..C8 = 61 keys, 36 white)
-const cv=$("cv"),g2=cv.getContext("2d");const WI=[0,-1,1,-1,2,3,-1,4,-1,5,-1,6];
-function draw(pos,prev){
-  g2.fillStyle="#000";g2.fillRect(0,0,244,64);const act=new Float32Array(61);
-  if(vsd){const N=vsd.N;let lo=0,hi=N.length;while(lo<hi){const m=lo+hi>>1;N[m][0]<=pos?lo=m+1:hi=m}
-    for(let i=lo-1;i>=0&&N[i][0]>pos-vsd.md-.01;i--){const n=N[i];if(pos<n[0]+n[1])act[n[2]-48]=Math.max(act[n[2]-48],n[3]*(1-.6*(pos-n[0])/n[1]))}
-    const a=Math.min(prev,pos),b=Math.max(prev,pos);for(const h of vsd.H){if(h[0]>b)break;if(h[0]>a)fl[h[1]]=Math.max(fl[h[1]],h[2])}}
-  const wk=n=>{const o=Math.floor(n/12),pc=n%12;return WI[pc]>=0?o*7+WI[pc]:-1};
-  for(let n=0;n<61;n++){const w=wk(n);if(w<0)continue;g2.fillStyle=act[n]>0?`hsl(${40+n*3},90%,${45+act[n]*20}%)`:"#d8d2f0";g2.fillRect(w*7,30,6,34)}
-  for(let n=0;n<61;n++){const w=wk(n);if(w>=0)continue;const x=wk(n-1)*7+5;g2.fillStyle=act[n]>0?`hsl(${40+n*3},90%,${50+act[n]*15}%)`:"#2a2540";g2.fillRect(x,30,5,20)}
-  const cols=["#ff6b6b","#ffcf4d","#6ee7b7"],nm=["KICK","SNARE","HAT"];
-  for(let i=0;i<3;i++){g2.fillStyle=cols[i];g2.globalAlpha=.15+.85*fl[i];g2.fillRect(4+i*80,4,70,18);g2.globalAlpha=1;fl[i]*=.82}
-  g2.fillStyle="#000";g2.font="8px monospace";for(let i=0;i<3;i++)g2.fillText(nm[i],10+i*80,16)}
-// ---- main loop
-function tick(ts){const dt=Math.min(.1,(ts-lt)/1e3||0);lt=ts;const prev=pos;
-  if(buf){
-    if(scrub){const d=tgt-pos;sp=d/(dt||.016)*.5;sp=Math.max(-8,Math.min(8,sp));if(Math.abs(d)<.02&&Math.abs(sp)<.3)sp=0;gt+=dt;if(gt>=.05&&ac){grain(sp,dt);gt=0}pos=Math.min(dur-.001,Math.max(0,pos+sp*dt))}
-    else if(playing&&ac){const t=ac.currentTime;pos+=(t-last)*rate();last=t;if(pos>dur)pos=dur}}
-  const f=dur?pos/dur:0;$("seek").querySelector(".k").style.left=(f*(sk.clientWidth-6-14))+"px";$("seek").querySelector(".f").style.width=(f*(sk.clientWidth-6-14)+7)+"px";
-  $("t1").textContent=fmt(pos);draw(pos,prev);requestAnimationFrame(tick)}
-function render(){$("list").innerHTML="";tracks.forEach((t,i)=>{const d=document.createElement("div");d.textContent=t.name;if(i===cur)d.className="cur";d.onclick=()=>load(i,true);$("list").appendChild(d)})}
-async function init(){uVol();uPit();
-  try{const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`);if(!r.ok)throw 0;const j=await r.json();
-    tracks=j.filter(f=>f.name.endsWith(".ogg")).map(f=>({file:f.name,name:f.name.slice(0,-4).replace(/_/g," ").toUpperCase()}))}
-  catch(e){try{tracks=await (await fetch("tracks.json")).json()}catch(_){$("np").textContent="CANNOT LOAD TRACK LIST";return}}
-  $("np").textContent="PICK A TRACK";render();requestAnimationFrame(tick)}
-init();addEventListener("resize",()=>{uVol();uPit()});
+  for(let i=0;i<m;i++,o+=6)H.push([d.getUint32(o,true)/1e3,Math.min(2,d.getUint8(o+4)),d.getUint8(o+5)/255]);N.sort((a,b)=>a[0]-b[0]);H.sort((a,b)=>a[0]-b[0]);return{N,H,md:md/1e3}}
+// ---- the little keyboard synth
+const voices=new Map();function noteOn(id,m){noteOff(id);ctx();const o=ac.createOscillator(),e=ac.createGain();o.type="triangle";o.frequency.value=440*Math.pow(2,(m-69)/12);e.gain.setValueAtTime(0,ac.currentTime);e.gain.linearRampToValueAtTime(.3,ac.currentTime+.01);o.connect(e);e.connect(gain);o.start();voices.set(id,{o,e,m})}
+function noteOff(id){const v=voices.get(id);if(!v)return;v.e.gain.cancelScheduledValues(ac.currentTime);v.e.gain.setValueAtTime(v.e.gain.value,ac.currentTime);v.e.gain.linearRampToValueAtTime(0,ac.currentTime+.12);v.o.stop(ac.currentTime+.15);voices.delete(id)}
+const held=m=>{for(const v of voices.values())if(v.m===m)return true;return false};
+// ---- input
+const grabs=new Map();const kwid=()=>Math.max(4,Math.round(7*u));
+const fx=(r,x)=>Math.min(1,Math.max(0,(x-(r.x+kwid()/2))/(r.w-kwid())));
+function setVol(x){vol=fx(R.vol,x);if(gain)gain.gain.value=vol}
+function setPit(x){st=Math.floor((fx(R.pit,x)*40-20)*2+.5)/2;if(src&&!scrub)src.playbackRate.value=rate()}
+cv.addEventListener("pointerdown",e=>{const x=e.clientX,y=e.clientY,id=e.pointerId;cv.setPointerCapture(id);ctx();
+  if(inr(R.pause,x,y)){grabs.set(id,{t:"pause"})}
+  else if(inr(R.vol,x,y)){grabs.set(id,{t:"vol"});setVol(x)}
+  else if(inr(R.pit,x,y)){grabs.set(id,{t:"pit"});setPit(x)}
+  else if(inr(R.seek,x,y)&&dur>0){stopSrc();scrub={was:playing};seekF=fx(R.seek,x);tgt=pos=seekF*dur;sp=0;gt=0;mkRev();grabs.set(id,{t:"seek"})}
+  else if(inr(R.loop,x,y)){grabs.set(id,{t:"loop"})}
+  else if(inr(R.list,x,y)){grabs.set(id,{t:"list",y0:y,ly:y,moved:0,row:Math.floor((y-R.list.y-bt+listScroll)/rowh)});listVel=0}
+  else{const m=keyAt(x,y);if(m>=0){grabs.set(id,{t:"key"});noteOn(id,m)}}});
+cv.addEventListener("pointermove",e=>{const k=grabs.get(e.pointerId);if(!k)return;const x=e.clientX,y=e.clientY;
+  if(k.t==="vol")setVol(x);else if(k.t==="pit")setPit(x);else if(k.t==="seek"){seekF=fx(R.seek,x);tgt=seekF*dur}
+  else if(k.t==="list"){if(Math.abs(y-k.y0)>6)k.moved=1;if(k.moved){listScroll=Math.min(scrollMax(),Math.max(0,listScroll-(y-k.ly)));listVel=0}k.ly=y}
+  else if(k.t==="key"){const m=keyAt(x,y),v=voices.get(e.pointerId);if(m>=0&&(!v||v.m!==m))noteOn(e.pointerId,m)}});
+const up=e=>{const k=grabs.get(e.pointerId);if(!k)return;grabs.delete(e.pointerId);const x=e.clientX,y=e.clientY,inside=e.type==="pointerup";
+  if(k.t==="pause"&&inside&&inr(R.pause,x,y))playing?pause():play();
+  else if(k.t==="loop"&&inside&&inr(R.loop,x,y))loop=!loop;
+  else if(k.t==="seek"&&scrub){const w=scrub.was;scrub=null;if(inside){pos=Math.min(dur-.01,Math.max(0,fx(R.seek,x)*dur))}if(w)play()}
+  else if(k.t==="list"&&inside&&!k.moved&&k.row>=0&&k.row<tracks.length)load(k.row,true);
+  else if(k.t==="key")noteOff(e.pointerId)};
+cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+cv.addEventListener("wheel",e=>{e.preventDefault();listScroll=Math.min(scrollMax(),Math.max(0,listScroll+e.deltaY))},{passive:false});
+// ---- drawing
+let lt=0;
+function drawSlider(r,label,val,v,def,held){const k=kwid(),lh=th(c2);T(label,r.x,r.y,c2,GREY);T(val,r.x+r.w-tw(val,c2),r.y,c2,HELD);
+  const zone=r.h-lh-g,tkh=Math.max(3,Math.round(5*u)),kh=Math.min(zone,Math.round(18*u)),cy=r.y+lh+g+Math.floor(zone/2);
+  F(r.x,cy-(tkh>>1),r.w,tkh,LINE,.86);F(r.x+1,cy-(tkh>>1)+1,r.w-2,tkh-2,DARK);const kx=r.x+Math.floor((r.w-k)*v);F(r.x+1,cy-(tkh>>1)+1,kx+(k>>1)-r.x-1,tkh-2,HELD);
+  F(r.x+Math.floor((r.w-k)*def)+(k>>1),cy-(tkh>>1)+tkh,1,(tkh>>1)+1,GREY);F(kx,cy-(kh>>1),k,kh,held?WH:[236,238,246]);F(kx,cy-(kh>>1),k,1,[10,12,24]);F(kx,cy-(kh>>1)+kh-1,k,1,[10,12,24])}
+function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[10,12,24]);F(0,0,W,bt,WH,.8);F(0,H-bt,W,bt,WH,.8);F(0,0,bt,H,WH,.8);F(W-bt,0,bt,H,WH,.8);
+  const tx=pad,ty=pad;T(playing||scrub?"NOW PLAYING":"PAUSED",tx,ty,cell,HELD);T(title||"PICK A TRACK",tx,ty+th(cell)+cell*2,cell,WH);
+  // eq
+  for(let i=0;i<BANDS;i++){const n=Math.floor(lvl[i]*EQR+.5),cx=eq.x+i*(eq.bw+eq.bg);for(let k=0;k<n;k++){const f=k/(EQR-1);F(cx,eq.y+eq.h-(k+1)*eq.q-k*eq.gap,eq.bw,eq.q,f<.5?[110,230,160]:f<.8?[255,214,110]:[255,110,110])}
+    const pk=Math.floor(peak[i]*EQR+.5);if(pk>n&&pk<=EQR&&pk>0)F(cx,eq.y+eq.h-pk*eq.q-(pk-1)*eq.gap,eq.bw,eq.q,WH,.9);F(cx,eq.y+eq.h,eq.bw,1,WH,.16)}
+  // controls
+  box(R.pause,grabs.size&&[...grabs.values()].some(k=>k.t==="pause")?[70,80,130]:[24,28,48],WH,.67);
+  {const q=R.pause,ic=Math.max(1,Math.floor(q.w/14)),ox=q.x+Math.floor((q.w-10*ic)/2),oy=q.y+Math.floor((q.h-10*ic)/2);
+   if(playing||scrub){F(ox+2*ic,oy,2*ic,10*ic,WH);F(ox+6*ic,oy,2*ic,10*ic,WH)}else for(let i=0;i<5;i++){const hh=(10-i*2)*ic;F(ox+i*2*ic,oy+Math.floor((10*ic-hh)/2),2*ic,hh,WH)}}
+  const gh=t=>[...grabs.values()].some(k=>k.t===t);
+  drawSlider(R.vol,"VOLUME",Math.round(vol*100)+"%",vol,.65,gh("vol"));drawSlider(R.pit,"PITCH",String(st),(st+20)/40,.5,gh("pit"));
+  {const r=R.seek,k=kwid(),lh=th(c2),f=scrub?seekF:dur>0?pos/dur:0,tk=Math.max(3,Math.round(5*u)),zone=r.h-lh-g,kh=Math.min(zone,Math.round(18*u)),cy=r.y+lh+g+Math.floor(zone/2);
+   T(fmt(f*dur),r.x,r.y,c2,HELD);const b=fmt(dur);T(b,r.x+r.w-tw(b,c2),r.y,c2,GREY);
+   if(scrub&&Math.abs(sp)>=.3){const s=(sp<0?"-":"")+Math.abs(sp).toFixed(1)+"X";T(s,r.x+Math.floor((r.w-tw(s,c2))/2),r.y,c2,MID)}
+   F(r.x,cy-(tk>>1),r.w,tk,LINE,dur>0?.86:.47);F(r.x+1,cy-(tk>>1)+1,r.w-2,tk-2,DARK);
+   if(dur>0){const kx=r.x+Math.floor((r.w-k)*f);F(r.x+1,cy-(tk>>1)+1,kx+(k>>1)-r.x-1,tk-2,MID);F(kx,cy-(kh>>1),k,kh,scrub?WH:[236,238,246]);F(kx,cy-(kh>>1),k,1,[10,12,24]);F(kx,cy-(kh>>1)+kh-1,k,1,[10,12,24])}}
+  {const r=R.loop,lh=th(c2),zone=r.h-lh-g,cy=r.y+lh+g+Math.floor(zone/2),q={x:r.x,y:cy-(cb>>1),w:cb,h:cb};box(q,gh("loop")?[38,46,84]:DARK,WH);if(loop)F(q.x+bt*2,q.y+bt*2,q.w-bt*4,q.h-bt*4,HELD);T("LOOP",q.x+q.w+g*2,cy-(lh>>1),c2,WH)}
+  // list
+  {const r=R.list;F(r.x,r.y,r.w,r.h,WH,.67);F(r.x+bt,r.y+bt,r.w-2*bt,r.h-2*bt,DARK);X.save();X.beginPath();X.rect(r.x+bt,r.y+bt,r.w-2*bt,r.h-2*bt);X.clip();
+   if(!tracks.length)T("NO OGG FILES FOUND",r.x+pad,r.y+bt+Math.floor((rowh-th(c2))/2),c2,GREY);
+   tracks.forEach((t,i)=>{const ry=r.y+bt+i*rowh-listScroll;if(ry+rowh<r.y||ry>r.y+r.h)return;const sel=i===cur,pr=[...grabs.values()].some(k=>k.t==="list"&&!k.moved&&k.row===i);
+    if(pr)F(r.x+bt,ry,r.w-2*bt,rowh,[38,46,84]);else if(sel)F(r.x+bt,ry,r.w-2*bt,rowh,[40,44,84]);const mk=Math.max(2,Math.round(3*u));if(sel)F(r.x+pad,ry+Math.floor((rowh-mk)/2),mk,mk,HELD);T(t.name,r.x+pad+mk+pad,ry+Math.floor((rowh-th(c2))/2),c2,WH)});
+   X.restore();const sm=scrollMax();if(sm>0){const view=r.h-2*bt,t2=Math.max(6,Math.floor(view*view/(view+sm))),ty2=r.y+bt+Math.floor((view-t2)*listScroll/sm);F(r.x+r.w-bt-3,ty2,3,t2,GREY,.78)}}
+  // lanes
+  {const L=R.lane,half=Math.floor((L.w-g*3)/2),lx=L.x,rx=L.x+half+g*3,ly=L.y+th(c2)+g,lh=L.h-th(c2)-g;T("DRUMS",lx,L.y,c2,GREY);T("INSTRUMENTS",rx,L.y,c2,GREY);
+   const pw=Math.floor((half-2*g)/3),DC=[KICK,SNARE,HAT],DN=["KICK","SNARE","HAT"];
+   for(let i=0;i<3;i++){const q={x:lx+i*(pw+g),y:ly,w:pw,h:lh},v=dr[i];box(q,mix([20,24,44],DC[i],v),mix(LINE,DC[i],v),.86);T(DN[i],q.x+Math.floor((q.w-tw(DN[i],c2))/2),q.y+Math.floor((q.h-th(c2))/2),c2,v>.55?[20,16,8]:WH)}
+   const rh=Math.floor((lh-2*g)/3),lc=Math.max(1,Math.floor(rh/8)),lw=tw("LEAD",lc)+g*2,IN=["BASS","MID","LEAD"],IC=[BASS,MID,LEAD];
+   for(let i=0;i<3;i++){const y=ly+i*(rh+g);T(IN[i],rx,y+Math.floor((rh-th(lc))/2),lc,WH);const b={x:rx+lw,y,w:half-lw,h:rh};F(b.x,b.y,b.w,b.h,LINE,.78);F(b.x+1,b.y+1,b.w-2,b.h-2,DARK);F(b.x+1,b.y+1,Math.floor((b.w-2)*rg[i]),b.h-2,IC[i])}}
+  T("TAP OR SLIDE ON THE KEYS TO PLAY",R.hint.x,R.hint.y,c2,GREY);
+  // piano
+  {const cl=Math.max(1,Math.round(u)),sep=kw>=6?1:0,rc=m=>m<60?BASS:m<84?MID:LEAD,P=R.piano;
+   for(let m=LO;m<=hi;m++){if(!isW(m))continue;const q=wr(m);let a=nv[m-LO];a=a>1?1:Math.pow(a,.7);let c=mix([236,238,246],rc(m),a);if(held(m))c=HELD;F(q.x,q.y,q.w,q.h,[10,12,24]);F(q.x+sep,q.y,q.w-sep,q.h-sep,c);
+    if(m%12===0&&kw>=8*cl){const s="C"+(m/12-1);T(s,q.x+Math.floor((q.w-tw(s,cl))/2),q.y+q.h-th(cl)-cl*2,cl,[70,76,104])}}
+   for(let m=LO;m<=hi;m++){if(isW(m))continue;const q=br(m);let a=nv[m-LO];a=a>1?1:Math.pow(a,.7);let c=mix([24,26,40],rc(m),a);if(held(m))c=HELD;F(q.x-1,q.y,q.w+2,q.h+1,[0,0,0]);F(q.x,q.y,q.w,q.h,c)}}
+}
+// ---- per frame
+function update(dt,pv){
+  if(an&&playing||an&&scrub){an.getByteFrequencyData(fb);const nyq=ac.sampleRate/2;for(let b=0;b<BANDS;b++){const f0=86*Math.pow(151,b/BANDS),f1=86*Math.pow(151,(b+1)/BANDS);let i0=Math.floor(f0/nyq*fb.length),i1=Math.max(i0+1,Math.floor(f1/nyq*fb.length)),s=0;for(let i=i0;i<i1;i++)s+=fb[i];const v=Math.min(1,Math.pow(s/(i1-i0)/255,1.6)*1.5);bs[b]=v}}else bs.fill(0);
+  for(let i=0;i<BANDS;i++){if(bs[i]>lvl[i])lvl[i]=bs[i];else lvl[i]=Math.max(bs[i],lvl[i]-dt*1.8);if(lvl[i]>=peak[i]){peak[i]=lvl[i];hold[i]=.25}else if(hold[i]>0)hold[i]-=dt;else peak[i]=Math.max(lvl[i],peak[i]-dt*.9)}
+  const nt=new Float32Array(61),hit=[0,0,0];
+  if(vsd&&(playing||scrub)){const N=vsd.N;let lo=0,h2=N.length;while(lo<h2){const m=lo+h2>>1;N[m][0]<=pos?lo=m+1:h2=m}
+    for(let i=lo-1;i>=0&&N[i][0]>pos-vsd.md-.01;i--){const n=N[i];if(pos<n[0]+n[1])nt[n[2]-LO]=Math.max(nt[n[2]-LO],n[3])}
+    const a=Math.min(pv,pos),b=Math.max(pv,pos);for(const h of vsd.H){if(h[0]>b)break;if(h[0]>a)hit[h[1]]=Math.max(hit[h[1]],h[2])}}
+  for(let i=0;i<61;i++){if(nt[i]>nv[i])nv[i]=nt[i];else nv[i]=Math.max(nt[i],nv[i]-dt*4.5)}
+  for(let i=0;i<3;i++){dr[i]=Math.max(0,dr[i]-dt*5);if(hit[i]>dr[i])dr[i]=hit[i]}
+  const rr=[0,0,0];for(let i=0;i<61;i++){const m=LO+i,k=m<60?0:m<84?1:2;if(nt[i]>rr[k])rr[k]=nt[i]}for(let i=0;i<3;i++){if(rr[i]>rg[i])rg[i]=rr[i];else rg[i]=Math.max(rr[i],rg[i]-dt*2.5)}}
+const bs=new Float32Array(BANDS);
+function tick(ts){const dt=Math.min(.1,(ts-lt)/1e3||0);lt=ts;const pv=pos;
+  if(buf){if(scrub){const d=tgt-pos;sp=Math.max(-8,Math.min(8,d/(dt||.016)*.5));if(Math.abs(d)<.02&&Math.abs(sp)<.3)sp=0;gt+=dt;if(gt>=.05){grain(sp);gt=0}pos=Math.min(dur-.001,Math.max(0,pos+sp*dt))}
+   else if(playing){const t=ac.currentTime;pos+=(t-lastT)*rate();lastT=t;if(pos>dur)pos=dur}}
+  if(!grabs.size||![...grabs.values()].some(k=>k.t==="list")){if(Math.abs(listVel)>1){listScroll=Math.min(scrollMax(),Math.max(0,listScroll+listVel*dt));listVel*=Math.exp(-3.2*dt)}}
+  update(dt,pv);draw(dt);requestAnimationFrame(tick)}
+addEventListener("resize",layout);
+(async function(){layout();
+  try{const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`);if(!r.ok)throw 0;tracks=(await r.json()).filter(f=>f.name.endsWith(".ogg")).map(f=>({file:f.name,name:f.name.slice(0,-4).replace(/_/g," ").toUpperCase()}))}
+  catch(e){try{tracks=await(await fetch("tracks.json")).json()}catch(_){}}
+  layout();requestAnimationFrame(tick)})();
 </script></body></html>
