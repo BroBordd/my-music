@@ -6,7 +6,7 @@
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const BUILD="2026-10-31T12:21:47Z";
+const BUILD="2026-10-31T12:49:24Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
 const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
@@ -96,7 +96,7 @@ const up=e=>{const k=grabs.get(e.pointerId);if(!k)return;grabs.delete(e.pointerI
   else if(k.t==="loop"&&inside&&inr(R.loop,x,y))loop=!loop;
   else if(k.t==="seek"&&scrub&&scrub.plain){scrub=null;if(inside&&el){const t=Math.min(dur-.01,Math.max(0,fx(R.seek,x)*dur));el.currentTime=t;pos=t}switchOver()}
   else if(k.t==="seek"&&scrub){const w=scrub.was;scrub=null;if(inside){pos=Math.min(dur-.01,Math.max(0,fx(R.seek,x)*dur))}if(w)play()}
-  else if(k.t==="list"){if(k.moved){if(performance.now()-k.lt>90)listVel=0;const cap=9*rowh*12;listVel=Math.max(-cap,Math.min(cap,listVel))}else if(inside&&k.row>=0&&k.row<tracks.length)load(k.row,true)}
+  else if(k.t==="list"){if(k.moved){if(performance.now()-k.lt>90)listVel=0;const cap=9*rowh*12;listVel=Math.max(-cap,Math.min(cap,listVel))}else if(inside&&k.row>=0&&k.row<tracks.length&&k.row!==cur)load(k.row,true)}
   else if(k.t==="key")noteOff(e.pointerId)};
 cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
 cv.addEventListener("wheel",e=>{e.preventDefault();listVel=Math.max(-9*rowh*12,Math.min(9*rowh*12,listVel+e.deltaY*(e.deltaMode?40:1)*5))},{passive:false});
