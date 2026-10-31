@@ -6,7 +6,7 @@
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const BUILD="2026-10-31T12:19:26Z";
+const BUILD="2026-10-31T12:21:47Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
 const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
@@ -104,24 +104,24 @@ cv.addEventListener("wheel",e=>{e.preventDefault();listVel=Math.max(-9*rowh*12,M
 const SN={n:0,f:[],t:0,storm:1,wo:0,woDir:1,woAt:0,next:0,seed:2463534242};
 const srand=()=>{let r=SN.seed;r^=r<<13;r^=r>>>17;r^=r<<5;SN.seed=r>>>0;return(SN.seed&0xFFFFFF)/16777216};
 function snowInit(){SN.f=[];SN.n=Math.round(Math.min(300,Math.max(150,170*(W*H)/(360*640))));
-  for(let i=0;i<SN.n;i++){const r=srand(),z=.2+.8*r*r;SN.f.push({z,x:srand()*W,y:srand()*H,ph:srand()*6.2832,fr:.8+1.2*srand(),vx:-70*u*z,vy:(30+60*z)*u})}
-  SN.t=0;SN.storm=1;SN.wo=0;SN.next=14+srand()*16}
+  for(let i=0;i<SN.n;i++){const r=srand(),z=.2+.8*r*r;SN.f.push({z,x:srand()*W,y:srand()*H,ph:srand()*6.2832,fr:.8+1.2*srand(),vx:-35*u*z,vy:(18+34*z)*u})}
+  SN.t=0;SN.storm=1;SN.wo=0;SN.next=18+srand()*20}
 function snowResize(ow,oh){if(!SN.f.length||!ow||!oh)return;const kx=W/ow,ky=H/oh;for(const f of SN.f){f.x*=kx;f.y*=ky}}
-function flakeSize(f){return Math.max(1,Math.round(u*(1+3.2*f.z)))}
+function flakeSize(f){return Math.max(1,Math.round(u*(.55+1.5*f.z)))}
 function snowUpdate(dt){SN.t+=dt;
-  SN.storm*=Math.exp(-dt/7);                         // the storm calms down over ~20 s
-  SN.next-=dt;if(SN.next<=0){SN.wo=.55+.45*srand();SN.woAt=SN.t;SN.next=10+srand()*22}   // random woosh
+  SN.storm*=Math.exp(-dt/5);                         // the storm calms down over ~20 s
+  SN.next-=dt;if(SN.next<=0){SN.wo=.55+.45*srand();SN.woAt=SN.t;SN.next=16+srand()*28}   // random woosh
   const wa=SN.t-SN.woAt,env=SN.wo>0?Math.min(1,wa/.35)*Math.exp(-Math.max(0,wa-.35)/1.6):0;if(SN.wo>0&&wa>9)SN.wo=0;
   const S=SN.storm,wooshK=SN.wo*env;
-  const wind=-(70+40*Math.sin(6.2832*SN.t/7)+18*Math.sin(6.2832*SN.t/3.1+1.7))*u*(1+4.5*S)-720*u*wooshK;
-  const fall=1+1.4*S+.9*wooshK;
-  for(const f of SN.f){const z=f.z,turb=Math.sin(SN.t*f.fr*(1+3*S)+f.ph)*14*u*(1.2-z)*(1+3*S+2*wooshK);
-    const tvx=wind*(.35+.65*z)+turb,tvy=((30+60*z)*u+Math.cos(SN.t*f.fr*.7+f.ph)*6*u)*fall+Math.sin(SN.t*f.fr*1.7+f.ph)*30*u*(S+wooshK)*(1.2-z);
-    const k=1-Math.exp(-dt*(3.2-2.2*z)*(1+1.5*wooshK));f.vx+=(tvx-f.vx)*k;f.vy+=(tvy-f.vy)*k;f.x+=f.vx*dt;f.y+=f.vy*dt;
+  const wind=-(34+16*Math.sin(6.2832*SN.t/9)+8*Math.sin(6.2832*SN.t/4.1+1.7))*u*(1+1.3*S)-200*u*wooshK;
+  const fall=1+.35*S+.25*wooshK;
+  for(const f of SN.f){const z=f.z,turb=Math.sin(SN.t*f.fr*.7*(1+.8*S)+f.ph)*8*u*(1.2-z)*(1+.8*S+.6*wooshK);
+    const tvx=wind*(.35+.65*z)+turb,tvy=((18+34*z)*u+Math.cos(SN.t*f.fr*.5+f.ph)*3*u)*fall+Math.sin(SN.t*f.fr*1.2+f.ph)*8*u*(S+wooshK)*(1.2-z);
+    const k=1-Math.exp(-dt*(2.4-1.6*z)*(1+.8*wooshK));f.vx+=(tvx-f.vx)*k;f.vy+=(tvy-f.vy)*k;f.x+=f.vx*dt;f.y+=f.vy*dt;
     const sz=flakeSize(f);if(f.y>H){f.y=-sz;f.x=srand()*(W+sz)}if(f.x<-sz*8){f.x=W+sz*.5;f.y=srand()*H}if(f.x>W+sz){f.x=-sz}}}
 function snowDraw(){F(0,0,W,H,[0,0,0]);X.fillStyle="#000";
-  for(const f of SN.f){const g=60+195*f.z|0,sz=flakeSize(f),len=Math.min(sz*10,Math.abs(f.vx)*.018*f.z),x=Math.floor(f.x),y=Math.floor(f.y);
-    X.fillStyle=`rgb(${g},${g},${g})`;if(f.vx<0)X.fillRect(x,y,sz+Math.floor(len),sz);else X.fillRect(x-Math.floor(len),y,sz+Math.floor(len),sz)}}
+  for(const f of SN.f){const g=60+195*f.z|0,sz=flakeSize(f),len=Math.min(sz*3,Math.abs(f.vx)*.006*f.z),x=Math.floor(f.x),y=Math.floor(f.y);
+    X.fillStyle=`rgba(${g},${g},${g},.4)`;if(f.vx<0)X.fillRect(x,y,sz+Math.floor(len),sz);else X.fillRect(x-Math.floor(len),y,sz+Math.floor(len),sz)}}
 // ---- drawing
 let lt=0;
 function drawSlider(r,label,val,v,def,held){const k=kwid(),lh=th(c2);T(label,r.x,r.y,c2,GREY);T(val,r.x+r.w-tw(val,c2),r.y,c2,HELD);
