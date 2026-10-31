@@ -6,7 +6,7 @@
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const BUILD="2026-10-31T12:11:48Z";
+const BUILD="2026-10-31T12:13:45Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
 const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
@@ -127,7 +127,10 @@ function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[5,6,12]);F(win.x,win.y,win.w,w
   {const r=R.list;F(r.x,r.y,r.w,r.h,WH,.67);F(r.x+bt,r.y+bt,r.w-2*bt,r.h-2*bt,DARK);X.save();X.beginPath();X.rect(r.x+bt,r.y+bt,r.w-2*bt,r.h-2*bt);X.clip();
    if(!tracks.length)T("NO OGG FILES FOUND",r.x+pad,r.y+bt+Math.floor((rowh-th(c2))/2),c2,GREY);
    tracks.forEach((t,i)=>{const ry=r.y+bt+i*rowh-listScroll;if(ry+rowh<r.y||ry>r.y+r.h)return;const sel=i===cur,pr=[...grabs.values()].some(k=>k.t==="list"&&!k.moved&&k.row===i);
-    if(pr)F(r.x+bt,ry,r.w-2*bt,rowh,[38,46,84]);else if(sel)F(r.x+bt,ry,r.w-2*bt,rowh,[40,44,84]);const mk=Math.max(2,Math.round(3*u));if(sel)F(r.x+pad,ry+Math.floor((rowh-mk)/2),mk,mk,HELD);T(t.name,r.x+pad+mk+pad,ry+Math.floor((rowh-th(c2))/2),c2,WH)});
+    const ld=sel&&loading;if(pr)F(r.x+bt,ry,r.w-2*bt,rowh,[38,46,84]);else if(ld)F(r.x+bt,ry,r.w-2*bt,rowh,[52,56,74]);else if(sel)F(r.x+bt,ry,r.w-2*bt,rowh,[40,44,84]);const mk=Math.max(2,Math.round(3*u));if(sel)F(r.x+pad,ry+Math.floor((rowh-mk)/2),mk,mk,ld?GREY:HELD);
+     const tx2=r.x+pad+mk+pad,ty3=ry+Math.floor((rowh-th(c2))/2);T(t.name,tx2,ty3,c2,ld?GREY:WH);
+     if(ld){const sq=Math.max(2,Math.round(th(c2)/5)),sx=tx2+tw(t.name,c2)+pad,sy=ry+Math.floor((rowh-3*sq)/2),head=Math.floor(performance.now()/90)%8,P=[[0,0],[1,0],[2,0],[2,1],[2,2],[1,2],[0,2],[0,1]];
+      P.forEach((p,j)=>F(sx+p[0]*sq,sy+p[1]*sq,sq,sq,[236,238,246],Math.max(.18,1-((head-j+8)%8)/7)))}});
    X.restore();const sm=scrollMax();if(sm>0){const view=r.h-2*bt,t2=Math.max(6,Math.floor(view*view/(view+sm))),ty2=r.y+bt+Math.floor((view-t2)*listScroll/sm);F(r.x+r.w-bt-3,ty2,3,t2,GREY,.78)}}
   // lanes
   {const L=R.lane,half=Math.floor((L.w-g*3)/2),lx=L.x,rx=L.x+half+g*3,ly=L.y+th(c2)+g,lh=L.h-th(c2)-g;T("DRUMS",lx,L.y,c2,GREY);T("INSTRUMENTS",rx,L.y,c2,GREY);
