@@ -6,7 +6,7 @@
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const BUILD="2026-10-31T12:13:45Z";
+const BUILD="2026-10-31T12:19:26Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
 const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
@@ -29,7 +29,7 @@ const fmt=s=>{s=Math.max(0,s|0);return(s/60|0)+":"+String(s%60).padStart(2,"0")}
 // ---- layout (musicwin.c, full screen, no map/custom switch)
 let win={x:0,y:0,w:0,h:0},W,H,u,bt,pad,g,cell,c2,cb,R={},hi,nw,kw,kx0,eq={},rowh,lrows,dpr=1;
 const WI=[0,-1,1,-1,2,3,-1,4,-1,5,-1,6],isW=m=>WI[m%12]>=0,wIdx=m=>((m-LO)/12|0)*7+WI[m%12];
-function layout(){dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;X.setTransform(dpr,0,0,dpr,0,0);
+function layout(){const ow=W,oh=H;dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;X.setTransform(dpr,0,0,dpr,0,0);
   u=Math.min(W,H)/360;const I=Math.round;bt=Math.max(1,I(1.5*u));pad=Math.max(3,I(6*u));g=Math.max(2,I(3*u));cell=Math.max(2,I(1.7*u));c2=Math.max(2,I(1.3*u));cb=Math.max(8,I(14*u));
   const m=Math.max(4,I(8*u));hi=W<H?96:108;nw=wIdx(hi)+1;const hdr=pad+th(cell)+cell*2+th(cell)+pad,laneH=th(c2)+g+I(28*u),hintH=th(c2)+g,ctrl=Math.max(18,I(28*u));rowh=Math.max(th(c2)+4,I(18*u));
   let pianoH=I(80*u),eqH=I(110*u);lrows=4;const fixed=hdr+pad+ctrl+pad+ctrl+pad+pad+laneH+pad+hintH+pad,avail=H-2*m;let full=fixed+eqH+pianoH+lrows*rowh+2*bt;
@@ -42,7 +42,7 @@ function layout(){dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.w
   const lw=cb+g*2+tw("LOOP",c2)+pad;R.loop={x:ix+iw-lw,y,w:lw,h:ctrl};R.seek={x:ix,y,w:iw-lw-g*2,h:ctrl};y+=ctrl+pad;
   R.list={x:ix,y,w:iw,h:lrows*rowh+2*bt};y+=R.list.h+pad;R.lane={x:ix,y,w:iw,h:laneH};y+=laneH+pad;R.hint={x:ix,y,w:iw,h:hintH};y+=hintH;R.piano={x:ix,y,w:iw,h:pianoH};
   win.h=R.piano.y+R.piano.h+pad-win.y;
-  kw=Math.max(2,Math.floor(iw/nw));kx0=ix+Math.floor((iw-kw*nw)/2);scrollMax();}
+  kw=Math.max(2,Math.floor(iw/nw));kx0=ix+Math.floor((iw-kw*nw)/2);scrollMax();if(SN.f.length)snowResize(ow,oh);else snowInit();}
 function scrollMax(){const m=Math.max(0,tracks.length*rowh-(R.list.h-2*bt));listScroll=Math.min(listScroll,m);return m}
 const wr=m=>({x:kx0+wIdx(m)*kw,y:R.piano.y,w:kw,h:R.piano.h}),br=m=>{const bw=Math.floor(kw*.62),bh=Math.floor(R.piano.h*.62),b=kx0+(wIdx(m-1)+1)*kw;return{x:b-Math.floor(bw/2),y:R.piano.y,w:bw,h:bh}};
 const keyAt=(x,y)=>{for(let m=LO;m<=hi;m++)if(!isW(m)&&inr(br(m),x,y))return m;for(let m=LO;m<=hi;m++)if(isW(m)&&inr(wr(m),x,y))return m;return-1};
@@ -100,13 +100,35 @@ const up=e=>{const k=grabs.get(e.pointerId);if(!k)return;grabs.delete(e.pointerI
   else if(k.t==="key")noteOff(e.pointerId)};
 cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
 cv.addEventListener("wheel",e=>{e.preventDefault();listVel=Math.max(-9*rowh*12,Math.min(9*rowh*12,listVel+e.deltaY*(e.deltaMode?40:1)*5))},{passive:false});
+// ---- space snow (port of vessel's space.c): a storm that calms down, then random wooshes
+const SN={n:0,f:[],t:0,storm:1,wo:0,woDir:1,woAt:0,next:0,seed:2463534242};
+const srand=()=>{let r=SN.seed;r^=r<<13;r^=r>>>17;r^=r<<5;SN.seed=r>>>0;return(SN.seed&0xFFFFFF)/16777216};
+function snowInit(){SN.f=[];SN.n=Math.round(Math.min(300,Math.max(150,170*(W*H)/(360*640))));
+  for(let i=0;i<SN.n;i++){const r=srand(),z=.2+.8*r*r;SN.f.push({z,x:srand()*W,y:srand()*H,ph:srand()*6.2832,fr:.8+1.2*srand(),vx:-70*u*z,vy:(30+60*z)*u})}
+  SN.t=0;SN.storm=1;SN.wo=0;SN.next=14+srand()*16}
+function snowResize(ow,oh){if(!SN.f.length||!ow||!oh)return;const kx=W/ow,ky=H/oh;for(const f of SN.f){f.x*=kx;f.y*=ky}}
+function flakeSize(f){return Math.max(1,Math.round(u*(1+3.2*f.z)))}
+function snowUpdate(dt){SN.t+=dt;
+  SN.storm*=Math.exp(-dt/7);                         // the storm calms down over ~20 s
+  SN.next-=dt;if(SN.next<=0){SN.wo=.55+.45*srand();SN.woAt=SN.t;SN.next=10+srand()*22}   // random woosh
+  const wa=SN.t-SN.woAt,env=SN.wo>0?Math.min(1,wa/.35)*Math.exp(-Math.max(0,wa-.35)/1.6):0;if(SN.wo>0&&wa>9)SN.wo=0;
+  const S=SN.storm,wooshK=SN.wo*env;
+  const wind=-(70+40*Math.sin(6.2832*SN.t/7)+18*Math.sin(6.2832*SN.t/3.1+1.7))*u*(1+4.5*S)-720*u*wooshK;
+  const fall=1+1.4*S+.9*wooshK;
+  for(const f of SN.f){const z=f.z,turb=Math.sin(SN.t*f.fr*(1+3*S)+f.ph)*14*u*(1.2-z)*(1+3*S+2*wooshK);
+    const tvx=wind*(.35+.65*z)+turb,tvy=((30+60*z)*u+Math.cos(SN.t*f.fr*.7+f.ph)*6*u)*fall+Math.sin(SN.t*f.fr*1.7+f.ph)*30*u*(S+wooshK)*(1.2-z);
+    const k=1-Math.exp(-dt*(3.2-2.2*z)*(1+1.5*wooshK));f.vx+=(tvx-f.vx)*k;f.vy+=(tvy-f.vy)*k;f.x+=f.vx*dt;f.y+=f.vy*dt;
+    const sz=flakeSize(f);if(f.y>H){f.y=-sz;f.x=srand()*(W+sz)}if(f.x<-sz*8){f.x=W+sz*.5;f.y=srand()*H}if(f.x>W+sz){f.x=-sz}}}
+function snowDraw(){F(0,0,W,H,[0,0,0]);X.fillStyle="#000";
+  for(const f of SN.f){const g=60+195*f.z|0,sz=flakeSize(f),len=Math.min(sz*10,Math.abs(f.vx)*.018*f.z),x=Math.floor(f.x),y=Math.floor(f.y);
+    X.fillStyle=`rgb(${g},${g},${g})`;if(f.vx<0)X.fillRect(x,y,sz+Math.floor(len),sz);else X.fillRect(x-Math.floor(len),y,sz+Math.floor(len),sz)}}
 // ---- drawing
 let lt=0;
 function drawSlider(r,label,val,v,def,held){const k=kwid(),lh=th(c2);T(label,r.x,r.y,c2,GREY);T(val,r.x+r.w-tw(val,c2),r.y,c2,HELD);
   const zone=r.h-lh-g,tkh=Math.max(3,Math.round(5*u)),kh=Math.min(zone,Math.round(18*u)),cy=r.y+lh+g+Math.floor(zone/2);
   F(r.x,cy-(tkh>>1),r.w,tkh,LINE,.86);F(r.x+1,cy-(tkh>>1)+1,r.w-2,tkh-2,DARK);const kx=r.x+Math.floor((r.w-k)*v);F(r.x+1,cy-(tkh>>1)+1,kx+(k>>1)-r.x-1,tkh-2,HELD);
   F(r.x+Math.floor((r.w-k)*def)+(k>>1),cy-(tkh>>1)+tkh,1,(tkh>>1)+1,GREY);F(kx,cy-(kh>>1),k,kh,held?WH:[236,238,246]);F(kx,cy-(kh>>1),k,1,[10,12,24]);F(kx,cy-(kh>>1)+kh-1,k,1,[10,12,24])}
-function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[5,6,12]);F(win.x,win.y,win.w,win.h,WH,.78);F(win.x+bt,win.y+bt,win.w-2*bt,win.h-2*bt,[10,12,24],.96);
+function draw(dt){X.clearRect(0,0,W,H);snowDraw();F(win.x,win.y,win.w,win.h,WH,.78);F(win.x+bt,win.y+bt,win.w-2*bt,win.h-2*bt,[10,12,24],.96);
   const tx=win.x+pad,ty=win.y+pad;T(loading?"LOADING":playing||scrub?"NOW PLAYING":"PAUSED",tx,ty,cell,HELD);T(title||"PICK A TRACK",tx,ty+th(cell)+cell*2,cell,WH);
   // eq
   for(let i=0;i<BANDS;i++){const n=Math.floor(lvl[i]*EQR+.5),cx=eq.x+i*(eq.bw+eq.bg);for(let k=0;k<n;k++){const f=k/(EQR-1);F(cx,eq.y+eq.h-(k+1)*eq.q-k*eq.gap,eq.bw,eq.q,f<.5?[110,230,160]:f<.8?[255,214,110]:[255,110,110])}
@@ -151,6 +173,7 @@ function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[5,6,12]);F(win.x,win.y,win.w,w
 }
 // ---- per frame
 function update(dt,pv){
+  snowUpdate(dt);
   if(an&&(playing||scrub)){an.getByteFrequencyData(fb);const nyq=ac.sampleRate/2;for(let b=0;b<BANDS;b++){const f0=86*Math.pow(151,b/BANDS),f1=86*Math.pow(151,(b+1)/BANDS);let i0=Math.floor(f0/nyq*fb.length),i1=Math.max(i0+1,Math.floor(f1/nyq*fb.length)),s=0;for(let i=i0;i<i1;i++)s+=fb[i];const v=Math.min(1,Math.pow(s/(i1-i0)/255,1.6)*1.5);bs[b]=v}}else bs.fill(0);
   for(let i=0;i<BANDS;i++){if(bs[i]>lvl[i])lvl[i]=bs[i];else lvl[i]=Math.max(bs[i],lvl[i]-dt*1.8);if(lvl[i]>=peak[i]){peak[i]=lvl[i];hold[i]=.25}else if(hold[i]>0)hold[i]-=dt;else peak[i]=Math.max(lvl[i],peak[i]-dt*.9)}
   const nt=new Float32Array(61),hit=[0,0,0];
