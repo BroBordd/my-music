@@ -6,7 +6,7 @@
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const BUILD="2026-10-31T12:08:21Z";
+const BUILD="2026-10-31T12:09:20Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
 const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
@@ -21,7 +21,7 @@ function box(q,fill,line,la=1){F(q.x,q.y,q.w,q.h,line,la);F(q.x+bt,q.y+bt,q.w-2*
 const inr=(q,x,y)=>x>=q.x&&x<q.x+q.w&&y>=q.y&&y<q.y+q.h;
 // ---- state
 let ac,gain,an,fb,tracks=[],cur=-1,buf=null,rev=null,vsd=null,pos=0,dur=0,playing=false,src=null,lastT=0,vol=.65,st=0,loop=false,loadId=0,title="";
-let scrub=null,tgt=0,sp=0,gt=0,seekF=0,listScroll=0,listVel=0;
+let loading=false,scrub=null,tgt=0,sp=0,gt=0,seekF=0,listScroll=0,listVel=0;
 const BANDS=24,EQR=16,LO=48,lvl=new Float32Array(BANDS),peak=new Float32Array(BANDS),hold=new Float32Array(BANDS),nv=new Float32Array(61),dr=[0,0,0],rg=[0,0,0];
 const rate=()=>Math.pow(2,st/12);
 function ctx(){if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();gain=ac.createGain();gain.gain.value=vol;an=ac.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=0;fb=new Uint8Array(an.frequencyBinCount);gain.connect(an);an.connect(ac.destination)}if(ac.state!=="running")ac.resume()}
@@ -53,8 +53,8 @@ function pause(){stopSrc();playing=false}
 function mkRev(){if(rev||!buf)return;rev=ac.createBuffer(buf.numberOfChannels,buf.length,buf.sampleRate);for(let c=0;c<buf.numberOfChannels;c++){const a=buf.getChannelData(c),b=rev.getChannelData(c);for(let i=0,n=a.length;i<n;i++)b[i]=a[n-1-i]}}
 function grain(v){const a=Math.abs(v);if(a<.04)return;const G=.07,t=ac.currentTime,b=v>0?buf:rev,off=v>0?pos:dur-pos,len=Math.min(G*a,b.duration-off-.001);if(len<=.005)return;
   const s=ac.createBufferSource(),gg=ac.createGain(),real=len/a,f=Math.min(.012,real/3);s.buffer=b;s.playbackRate.value=a;gg.gain.setValueAtTime(0,t);gg.gain.linearRampToValueAtTime(1,t+f);gg.gain.setValueAtTime(1,t+real-f);gg.gain.linearRampToValueAtTime(0,t+real);s.connect(gg);gg.connect(gain);s.start(t,off,len)}
-async function load(i,auto){const id=++loadId;stopSrc();playing=false;cur=i;buf=rev=vsd=null;pos=0;dur=0;title=tracks[i].name;ctx();
-  try{const ab=await(await fetch(RAW+tracks[i].file)).arrayBuffer();const b=await ac.decodeAudioData(ab);if(id!==loadId)return;buf=b;dur=b.duration}catch(e){title="CANNOT PLAY "+title;return}
+async function load(i,auto){const id=++loadId;loading=true;stopSrc();playing=false;cur=i;buf=rev=vsd=null;pos=0;dur=0;title=tracks[i].name;ctx();
+  try{const ab=await(await fetch(RAW+tracks[i].file)).arrayBuffer();const b=await ac.decodeAudioData(ab);if(id!==loadId)return;buf=b;dur=b.duration;loading=false}catch(e){if(id===loadId){loading=false;title="CANNOT PLAY "+title}return}
   fetch(RAW+tracks[i].file.replace(/\.ogg$/,".vsd")).then(r=>r.ok?r.arrayBuffer():null).then(a=>{if(a&&id===loadId)vsd=parseVsd(a)}).catch(()=>{});if(auto)play()}
 function parseVsd(ab){const d=new DataView(ab);if(d.getUint32(0,true)!==0x31445356)return null;const n=d.getUint32(4,true),m=d.getUint32(8,true),N=[],H=[];let o=16,md=0;
   for(let i=0;i<n;i++,o+=8){let p=d.getUint8(o+6);while(p<48)p+=12;while(p>=109)p-=12;const du=Math.max(30,d.getUint16(o+4,true));md=Math.max(md,du);N.push([d.getUint32(o,true)/1e3,du/1e3,p,d.getUint8(o+7)/255])}
@@ -78,7 +78,7 @@ cv.addEventListener("pointerdown",e=>{const x=e.clientX,y=e.clientY,id=e.pointer
   else{const m=keyAt(x,y);if(m>=0){grabs.set(id,{t:"key"});noteOn(id,m)}}});
 cv.addEventListener("pointermove",e=>{const k=grabs.get(e.pointerId);if(!k)return;const x=e.clientX,y=e.clientY;
   if(k.t==="vol")setVol(x);else if(k.t==="pit")setPit(x);else if(k.t==="seek"){seekF=fx(R.seek,x);tgt=seekF*dur}
-  else if(k.t==="list"){if(Math.abs(y-k.y0)>6)k.moved=1;if(k.moved){const now=performance.now(),d=Math.max(1,now-k.lt)/1e3,v=-(y-k.ly)/d;listScroll=Math.min(scrollMax(),Math.max(0,listScroll-(y-k.ly)));listVel=listVel*.6+v*.4;k.lt=now}k.ly=y}
+  else if(k.t==="list"){if(Math.abs(y-k.y0)>10)k.moved=1;if(k.moved){const now=performance.now(),d=Math.max(1,now-k.lt)/1e3,v=-(y-k.ly)/d;listScroll=Math.min(scrollMax(),Math.max(0,listScroll-(y-k.ly)));listVel=listVel*.6+v*.4;k.lt=now}k.ly=y}
   else if(k.t==="key"){const m=keyAt(x,y),v=voices.get(e.pointerId);if(m>=0&&(!v||v.m!==m))noteOn(e.pointerId,m)}});
 const up=e=>{const k=grabs.get(e.pointerId);if(!k)return;grabs.delete(e.pointerId);const x=e.clientX,y=e.clientY,inside=e.type==="pointerup";
   if(k.t==="pause"&&inside&&inr(R.pause,x,y))playing?pause():play();
@@ -95,7 +95,7 @@ function drawSlider(r,label,val,v,def,held){const k=kwid(),lh=th(c2);T(label,r.x
   F(r.x,cy-(tkh>>1),r.w,tkh,LINE,.86);F(r.x+1,cy-(tkh>>1)+1,r.w-2,tkh-2,DARK);const kx=r.x+Math.floor((r.w-k)*v);F(r.x+1,cy-(tkh>>1)+1,kx+(k>>1)-r.x-1,tkh-2,HELD);
   F(r.x+Math.floor((r.w-k)*def)+(k>>1),cy-(tkh>>1)+tkh,1,(tkh>>1)+1,GREY);F(kx,cy-(kh>>1),k,kh,held?WH:[236,238,246]);F(kx,cy-(kh>>1),k,1,[10,12,24]);F(kx,cy-(kh>>1)+kh-1,k,1,[10,12,24])}
 function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[5,6,12]);F(win.x,win.y,win.w,win.h,WH,.78);F(win.x+bt,win.y+bt,win.w-2*bt,win.h-2*bt,[10,12,24],.96);
-  const tx=win.x+pad,ty=win.y+pad;T(playing||scrub?"NOW PLAYING":"PAUSED",tx,ty,cell,HELD);T(title||"PICK A TRACK",tx,ty+th(cell)+cell*2,cell,WH);
+  const tx=win.x+pad,ty=win.y+pad;T(loading?"LOADING":playing||scrub?"NOW PLAYING":"PAUSED",tx,ty,cell,HELD);T(title||"PICK A TRACK",tx,ty+th(cell)+cell*2,cell,WH);
   // eq
   for(let i=0;i<BANDS;i++){const n=Math.floor(lvl[i]*EQR+.5),cx=eq.x+i*(eq.bw+eq.bg);for(let k=0;k<n;k++){const f=k/(EQR-1);F(cx,eq.y+eq.h-(k+1)*eq.q-k*eq.gap,eq.bw,eq.q,f<.5?[110,230,160]:f<.8?[255,214,110]:[255,110,110])}
     const pk=Math.floor(peak[i]*EQR+.5);if(pk>n&&pk<=EQR&&pk>0)F(cx,eq.y+eq.h-pk*eq.q-(pk-1)*eq.gap,eq.bw,eq.q,WH,.9);F(cx,eq.y+eq.h,eq.bw,1,WH,.16)}
