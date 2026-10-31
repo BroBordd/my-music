@@ -73,20 +73,20 @@ cv.addEventListener("pointerdown",e=>{const x=e.clientX,y=e.clientY,id=e.pointer
   else if(inr(R.pit,x,y)){grabs.set(id,{t:"pit"});setPit(x)}
   else if(inr(R.seek,x,y)&&dur>0){stopSrc();scrub={was:playing};seekF=fx(R.seek,x);tgt=pos=seekF*dur;sp=0;gt=0;mkRev();grabs.set(id,{t:"seek"})}
   else if(inr(R.loop,x,y)){grabs.set(id,{t:"loop"})}
-  else if(inr(R.list,x,y)){grabs.set(id,{t:"list",y0:y,ly:y,moved:0,row:Math.floor((y-R.list.y-bt+listScroll)/rowh)});listVel=0}
+  else if(inr(R.list,x,y)){grabs.set(id,{t:"list",y0:y,ly:y,lt:performance.now(),moved:0,row:Math.floor((y-R.list.y-bt+listScroll)/rowh)});listVel=0}
   else{const m=keyAt(x,y);if(m>=0){grabs.set(id,{t:"key"});noteOn(id,m)}}});
 cv.addEventListener("pointermove",e=>{const k=grabs.get(e.pointerId);if(!k)return;const x=e.clientX,y=e.clientY;
   if(k.t==="vol")setVol(x);else if(k.t==="pit")setPit(x);else if(k.t==="seek"){seekF=fx(R.seek,x);tgt=seekF*dur}
-  else if(k.t==="list"){if(Math.abs(y-k.y0)>6)k.moved=1;if(k.moved){listScroll=Math.min(scrollMax(),Math.max(0,listScroll-(y-k.ly)));listVel=0}k.ly=y}
+  else if(k.t==="list"){if(Math.abs(y-k.y0)>6)k.moved=1;if(k.moved){const now=performance.now(),d=Math.max(1,now-k.lt)/1e3,v=-(y-k.ly)/d;listScroll=Math.min(scrollMax(),Math.max(0,listScroll-(y-k.ly)));listVel=listVel*.6+v*.4;k.lt=now}k.ly=y}
   else if(k.t==="key"){const m=keyAt(x,y),v=voices.get(e.pointerId);if(m>=0&&(!v||v.m!==m))noteOn(e.pointerId,m)}});
 const up=e=>{const k=grabs.get(e.pointerId);if(!k)return;grabs.delete(e.pointerId);const x=e.clientX,y=e.clientY,inside=e.type==="pointerup";
   if(k.t==="pause"&&inside&&inr(R.pause,x,y))playing?pause():play();
   else if(k.t==="loop"&&inside&&inr(R.loop,x,y))loop=!loop;
   else if(k.t==="seek"&&scrub){const w=scrub.was;scrub=null;if(inside){pos=Math.min(dur-.01,Math.max(0,fx(R.seek,x)*dur))}if(w)play()}
-  else if(k.t==="list"&&inside&&!k.moved&&k.row>=0&&k.row<tracks.length)load(k.row,true);
+  else if(k.t==="list"){if(k.moved){if(performance.now()-k.lt>90)listVel=0;const cap=9*rowh*12;listVel=Math.max(-cap,Math.min(cap,listVel))}else if(inside&&k.row>=0&&k.row<tracks.length)load(k.row,true)}
   else if(k.t==="key")noteOff(e.pointerId)};
 cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
-cv.addEventListener("wheel",e=>{e.preventDefault();listScroll=Math.min(scrollMax(),Math.max(0,listScroll+e.deltaY))},{passive:false});
+cv.addEventListener("wheel",e=>{e.preventDefault();listVel=Math.max(-9*rowh*12,Math.min(9*rowh*12,listVel+e.deltaY*(e.deltaMode?40:1)*5))},{passive:false});
 // ---- drawing
 let lt=0;
 function drawSlider(r,label,val,v,def,held){const k=kwid(),lh=th(c2);T(label,r.x,r.y,c2,GREY);T(val,r.x+r.w-tw(val,c2),r.y,c2,HELD);
@@ -144,7 +144,7 @@ const bs=new Float32Array(BANDS);
 function tick(ts){const dt=Math.min(.1,(ts-lt)/1e3||0);lt=ts;const pv=pos;
   if(buf){if(scrub){const d=tgt-pos;sp=Math.max(-8,Math.min(8,d/(dt||.016)*.5));if(Math.abs(d)<.02&&Math.abs(sp)<.3)sp=0;gt+=dt;if(gt>=.05){grain(sp);gt=0}pos=Math.min(dur-.001,Math.max(0,pos+sp*dt))}
    else if(playing){const t=ac.currentTime;pos+=(t-lastT)*rate();lastT=t;if(pos>dur)pos=dur}}
-  if(!grabs.size||![...grabs.values()].some(k=>k.t==="list")){if(Math.abs(listVel)>1){listScroll=Math.min(scrollMax(),Math.max(0,listScroll+listVel*dt));listVel*=Math.exp(-3.2*dt)}}
+  if(!grabs.size||![...grabs.values()].some(k=>k.t==="list")){if(Math.abs(listVel)>8){const mx=scrollMax(),n=listScroll+listVel*dt;listScroll=Math.min(mx,Math.max(0,n));if(n<0||n>mx)listVel=0;else listVel*=Math.exp(-3.2*dt)}else listVel=0}
   update(dt,pv);draw(dt);requestAnimationFrame(tick)}
 addEventListener("resize",layout);
 (async function(){layout();
