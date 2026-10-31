@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VESSEL MUSIC</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14121f;--pn:#241f3a;--ln:#5b4fa0;--fg:#e8e2ff;--ac:#ffcf4d;--dim:#8a82b8;--hi:#6ee7b7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);font:10px/1.6 'Press Start 2P',monospace,sans-serif;image-rendering:pixelated;padding:12px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.w{max-width:760px;margin:auto;background:var(--pn);border:4px solid var(--ln);box-shadow:6px 6px 0 #000;padding:12px}
+h1{font-size:14px;margin:0 0 8px;color:var(--ac)}
+.np{border:2px solid var(--ln);background:#000;padding:8px;margin-bottom:10px;min-height:34px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+canvas{display:block;width:100%;height:auto;border:2px solid var(--ln);background:#000;image-rendering:pixelated}
+.row{display:flex;gap:10px;margin-top:10px;align-items:stretch}
+.btn{font:inherit;color:var(--fg);background:var(--bg);border:3px solid var(--ln);padding:10px;min-width:44px;cursor:pointer;box-shadow:3px 3px 0 #000}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}.btn.on{background:var(--ac);color:#000}
+.sl{flex:1;position:relative;height:44px;border:3px solid var(--ln);background:var(--bg);touch-action:none;cursor:pointer;user-select:none}
+.sl .f{position:absolute;left:0;top:0;bottom:0;background:var(--ln);opacity:.6;pointer-events:none}
+.sl .k{position:absolute;top:-3px;bottom:-3px;width:14px;background:var(--ac);border:2px solid #000;pointer-events:none}
+.sl .t{position:absolute;left:6px;top:0;line-height:38px;font-size:8px;pointer-events:none;color:var(--fg);text-shadow:1px 1px 0 #000}
+.tm{display:flex;justify-content:space-between;margin-top:4px;color:var(--dim);font-size:8px}
+#list{margin-top:10px;max-height:240px;overflow:auto;border:2px solid var(--ln);background:#000}
+#list div{padding:8px;cursor:pointer;border-bottom:1px solid #222}#list div.cur{background:var(--ln);color:var(--ac)}
+.st{color:var(--dim);font-size:8px;margin-top:8px}
+@media(max-width:520px){.row{flex-wrap:wrap}.sl{flex:1 1 40%}}
+</style></head><body><div class="w">
+<h1>VESSEL MUSIC</h1>
+<div class="np" id="np">LOADING...</div>
+<canvas id="cv" width="244" height="64"></canvas>
+<div class="row"><button class="btn" id="pp">PLAY</button>
+<div class="sl" id="vol"><div class="f"></div><div class="k"></div><div class="t" id="vt">VOLUME</div></div>
+<div class="sl" id="pit"><div class="f"></div><div class="k"></div><div class="t" id="pt">PITCH</div></div></div>
+<div class="row"><div class="sl" id="seek"><div class="f"></div><div class="k"></div></div><button class="btn" id="lp">LOOP</button></div>
+<div class="tm"><span id="t1">0:00</span><span id="t2">0:00</span></div>
+<div id="list"></div>
+<div class="st" id="st">drag the bar like a tape. drums + notes come from the .vsd files.</div>
+</div>
+<script>
+const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
+const $=id=>document.getElementById(id);
+let ac,gain,tracks=[],cur=-1,buf=null,rev=null,vsd=null,pos=0,dur=0,playing=false,src=null,last=0,vol=.65,st=0,loop=false,scrub=null,seekF=0,fl=[0,0,0],lt=0,loadId=0;
+const rate=()=>Math.pow(2,st/12);
+function ctx(){if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();gain=ac.createGain();gain.gain.value=vol;gain.connect(ac.destination)}if(ac.state!=="running")ac.resume()}
+const fmt=s=>{s=Math.max(0,s|0);return(s/60|0)+":"+String(s%60).padStart(2,"0")};
+// ---- sliders
+function slider(el,get,set,drag){
+  const upd=()=>{const f=get(),w=el.clientWidth-6;el.querySelector(".k").style.left=(f*(w-14))+"px";el.querySelector(".f").style.width=(f*(w-14)+7)+"px"};
+  let on=false;const fx=e=>{const r=el.getBoundingClientRect();return Math.min(1,Math.max(0,(e.clientX-r.left-10)/(r.width-26)))};
+  el.onpointerdown=e=>{on=true;el.setPointerCapture(e.pointerId);set(fx(e),0);upd()};
+  el.onpointermove=e=>{if(on){set(fx(e),1);upd()}};
+  el.onpointerup=el.onpointercancel=e=>{if(on){on=false;set(fx(e),2);upd()}};
+  el.upd=upd;return upd}
+const uVol=slider($("vol"),()=>vol,f=>{vol=f;if(gain)gain.gain.value=f;$("vt").textContent="VOLUME "+Math.round(f*100)+"%"});
+const uPit=slider($("pit"),()=>(st+20)/40,f=>{st=Math.round((f*40-20)*2)/2;$("pt").textContent="PITCH "+(st>0?"+":"")+st;if(src&&!scrub)src.playbackRate.value=rate()});
+$("vt").textContent="VOLUME 65%";$("pt").textContent="PITCH 0";
+// ---- tape seek: grains of the track played at the speed of the finger, backwards from a reversed copy
+const sk=$("seek");let tgt=0,sp=0,gt=0;
+sk.onpointerdown=e=>{if(!buf)return;ctx();sk.setPointerCapture(e.pointerId);stopSrc();scrub={was:playing};tgt=pos=skf(e)*dur;sp=0;gt=0;mkRev()};
+sk.onpointermove=e=>{if(scrub)tgt=skf(e)*dur};
+sk.onpointerup=sk.onpointercancel=e=>{if(!scrub)return;const w=scrub.was;scrub=null;pos=Math.min(dur-.01,Math.max(0,skf(e)*dur));if(w)play();else playing=false;upPlay()};
+function skf(e){const r=sk.getBoundingClientRect();return Math.min(1,Math.max(0,(e.clientX-r.left-10)/(r.width-26)))}
+function mkRev(){if(rev||!buf)return;rev=ac.createBuffer(buf.numberOfChannels,buf.length,buf.sampleRate);for(let c=0;c<buf.numberOfChannels;c++){const a=buf.getChannelData(c),b=rev.getChannelData(c);for(let i=0,n=a.length;i<n;i++)b[i]=a[n-1-i]}}
+function grain(v,dt){ // v = signed tape speed (x normal)
+  const a=Math.abs(v);if(a<.04)return;const G=.07,t=ac.currentTime,b=v>0?buf:rev,off=v>0?pos:dur-pos;
+  const len=Math.min(G*a,(b.duration-off)-.001);if(len<=.005)return;
+  const s=ac.createBufferSource(),g=ac.createGain();s.buffer=b;s.playbackRate.value=a*(1);
+  const real=len/a;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+Math.min(.012,real/3));g.gain.setValueAtTime(1,t+real-.012>t?t+real-.012:t+real/2);g.gain.linearRampToValueAtTime(0,t+real);
+  s.connect(g);g.connect(gain);s.start(t,off,len)}
+// ---- playback
+function stopSrc(){if(src){src.onended=null;try{src.stop()}catch(e){}src=null}}
+function play(){if(!buf)return;ctx();stopSrc();if(pos>=dur-.05)pos=0;src=ac.createBufferSource();src.buffer=buf;src.playbackRate.value=rate();src.connect(gain);const me=src;src.onended=()=>{if(src!==me)return;src=null;if(loop){pos=0;play()}else if(cur<tracks.length-1)load(cur+1,true);else{playing=false;pos=0;upPlay()}};src.start(0,pos);last=ac.currentTime;playing=true;upPlay()}
+function pause(){stopSrc();playing=false;upPlay()}
+function upPlay(){$("pp").textContent=playing?"PAUSE":"PLAY";$("pp").classList.toggle("on",playing)}
+$("pp").onclick=()=>playing?pause():play();
+$("lp").onclick=()=>{loop=!loop;$("lp").classList.toggle("on",loop)};
+async function load(i,auto){
+  const id=++loadId;stopSrc();playing=false;cur=i;buf=rev=vsd=null;pos=0;dur=0;upPlay();render();
+  $("np").textContent="LOADING "+tracks[i].name+"...";ctx();
+  try{const r=await fetch(RAW+tracks[i].file);const ab=await r.arrayBuffer();const b=await ac.decodeAudioData(ab);if(id!==loadId)return;buf=b;dur=b.duration}catch(e){$("np").textContent="CANNOT PLAY "+tracks[i].name;return}
+  $("np").textContent="NOW PLAYING: "+tracks[i].name;$("t2").textContent=fmt(dur);
+  fetch(RAW+tracks[i].file.replace(/\.ogg$/,".vsd")).then(r=>r.ok?r.arrayBuffer():null).then(a=>{if(a&&id===loadId)vsd=parseVsd(a)}).catch(()=>{});
+  if(auto)play()}
+function parseVsd(ab){const d=new DataView(ab);if(d.getUint32(0,true)!==0x31445356)return null;const n=d.getUint32(4,true),m=d.getUint32(8,true),N=[],H=[];let o=16,md=0;
+  for(let i=0;i<n;i++,o+=8){let p=d.getUint8(o+6);while(p<48)p+=12;while(p>=109)p-=12;const du=Math.max(30,d.getUint16(o+4,true));md=Math.max(md,du);N.push([d.getUint32(o,true)/1e3,du/1e3,p,d.getUint8(o+7)/255])}
+  for(let i=0;i<m;i++,o+=6)H.push([d.getUint32(o,true)/1e3,Math.min(2,d.getUint8(o+4)),d.getUint8(o+5)/255]);
+  N.sort((a,b)=>a[0]-b[0]);H.sort((a,b)=>a[0]-b[0]);return{N,H,md:md/1e3}}
+// ---- piano + drums on a 244x64 pixel canvas (C3..C8 = 61 keys, 36 white)
+const cv=$("cv"),g2=cv.getContext("2d");const WI=[0,-1,1,-1,2,3,-1,4,-1,5,-1,6];
+function draw(pos,prev){
+  g2.fillStyle="#000";g2.fillRect(0,0,244,64);const act=new Float32Array(61);
+  if(vsd){const N=vsd.N;let lo=0,hi=N.length;while(lo<hi){const m=lo+hi>>1;N[m][0]<=pos?lo=m+1:hi=m}
+    for(let i=lo-1;i>=0&&N[i][0]>pos-vsd.md-.01;i--){const n=N[i];if(pos<n[0]+n[1])act[n[2]-48]=Math.max(act[n[2]-48],n[3]*(1-.6*(pos-n[0])/n[1]))}
+    const a=Math.min(prev,pos),b=Math.max(prev,pos);for(const h of vsd.H){if(h[0]>b)break;if(h[0]>a)fl[h[1]]=Math.max(fl[h[1]],h[2])}}
+  const wk=n=>{const o=Math.floor(n/12),pc=n%12;return WI[pc]>=0?o*7+WI[pc]:-1};
+  for(let n=0;n<61;n++){const w=wk(n);if(w<0)continue;g2.fillStyle=act[n]>0?`hsl(${40+n*3},90%,${45+act[n]*20}%)`:"#d8d2f0";g2.fillRect(w*7,30,6,34)}
+  for(let n=0;n<61;n++){const w=wk(n);if(w>=0)continue;const x=wk(n-1)*7+5;g2.fillStyle=act[n]>0?`hsl(${40+n*3},90%,${50+act[n]*15}%)`:"#2a2540";g2.fillRect(x,30,5,20)}
+  const cols=["#ff6b6b","#ffcf4d","#6ee7b7"],nm=["KICK","SNARE","HAT"];
+  for(let i=0;i<3;i++){g2.fillStyle=cols[i];g2.globalAlpha=.15+.85*fl[i];g2.fillRect(4+i*80,4,70,18);g2.globalAlpha=1;fl[i]*=.82}
+  g2.fillStyle="#000";g2.font="8px monospace";for(let i=0;i<3;i++)g2.fillText(nm[i],10+i*80,16)}
+// ---- main loop
+function tick(ts){const dt=Math.min(.1,(ts-lt)/1e3||0);lt=ts;const prev=pos;
+  if(buf){
+    if(scrub){const d=tgt-pos;sp=d/(dt||.016)*.5;sp=Math.max(-8,Math.min(8,sp));if(Math.abs(d)<.02&&Math.abs(sp)<.3)sp=0;gt+=dt;if(gt>=.05&&ac){grain(sp,dt);gt=0}pos=Math.min(dur-.001,Math.max(0,pos+sp*dt))}
+    else if(playing&&ac){const t=ac.currentTime;pos+=(t-last)*rate();last=t;if(pos>dur)pos=dur}}
+  const f=dur?pos/dur:0;$("seek").querySelector(".k").style.left=(f*(sk.clientWidth-6-14))+"px";$("seek").querySelector(".f").style.width=(f*(sk.clientWidth-6-14)+7)+"px";
+  $("t1").textContent=fmt(pos);draw(pos,prev);requestAnimationFrame(tick)}
+function render(){$("list").innerHTML="";tracks.forEach((t,i)=>{const d=document.createElement("div");d.textContent=t.name;if(i===cur)d.className="cur";d.onclick=()=>load(i,true);$("list").appendChild(d)})}
+async function init(){uVol();uPit();
+  try{const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`);if(!r.ok)throw 0;const j=await r.json();
+    tracks=j.filter(f=>f.name.endsWith(".ogg")).map(f=>({file:f.name,name:f.name.slice(0,-4).replace(/_/g," ").toUpperCase()}))}
+  catch(e){try{tracks=await (await fetch("tracks.json")).json()}catch(_){$("np").textContent="CANNOT LOAD TRACK LIST";return}}
+  $("np").textContent="PICK A TRACK";render();requestAnimationFrame(tick)}
+init();addEventListener("resize",()=>{uVol();uPit()});
+</script></body></html>
