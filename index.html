@@ -6,10 +6,11 @@
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
+const BUILD="2026-10-31T12:08:21Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
-const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
-const GI=c=>{if(c>=65&&c<=90)return c-65;if(c>=48&&c<=57)return 26+c-48;return[44,46,33,63,39,45,37,58].indexOf(c)>=0?36+[44,46,33,63,39,45,37,58].indexOf(c):-1};
+const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
+const GI=c=>{if(c>=65&&c<=90)return c-65;if(c>=48&&c<=57)return 26+c-48;return[44,46,33,63,39,45,37,58,43].indexOf(c)>=0?36+[44,46,33,63,39,45,37,58,43].indexOf(c):-1};
 const tw=(s,c)=>s.length?s.length*6*c-c:0,th=c=>7*c;
 const rgb=(c,a=1)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
 const mix=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
@@ -122,6 +123,10 @@ function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[5,6,12]);F(win.x,win.y,win.w,w
    for(let i=0;i<3;i++){const q={x:lx+i*(pw+g),y:ly,w:pw,h:lh},v=dr[i];box(q,mix([20,24,44],DC[i],v),mix(LINE,DC[i],v),.86);T(DN[i],q.x+Math.floor((q.w-tw(DN[i],c2))/2),q.y+Math.floor((q.h-th(c2))/2),c2,v>.55?[20,16,8]:WH)}
    const rh=Math.floor((lh-2*g)/3),lc=Math.max(1,Math.floor(rh/8)),lw=tw("LEAD",lc)+g*2,IN=["BASS","MID","LEAD"],IC=[BASS,MID,LEAD];
    for(let i=0;i<3;i++){const y=ly+i*(rh+g);T(IN[i],rx,y+Math.floor((rh-th(lc))/2),lc,WH);const b={x:rx+lw,y,w:half-lw,h:rh};F(b.x,b.y,b.w,b.h,LINE,.78);F(b.x+1,b.y+1,b.w-2,b.h-2,DARK);F(b.x+1,b.y+1,Math.floor((b.w-2)*rg[i]),b.h-2,IC[i])}}
+  {const d=new Date(new Date(BUILD).getTime()+2*3600e3),M=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"],
+    t=d.getUTCHours()+":"+String(d.getUTCMinutes()).padStart(2,"0")+" "+d.getUTCDate()+" "+M[d.getUTCMonth()]+" "+d.getUTCFullYear()+" GMT+2",a="LAST UPDATED",
+    lh=th(c2),y0=win.y+win.h+g*2>H-2*lh-g*3?Math.max(g,win.y-2*lh-g*3):win.y+win.h+g*2;
+    T(a,Math.floor((W-tw(a,c2))/2),y0,c2,GREY);T(t,Math.floor((W-tw(t,c2))/2),y0+lh+g,c2,HELD)}
   T("TAP OR SLIDE ON THE KEYS TO PLAY",R.hint.x,R.hint.y,c2,GREY);
   // piano
   {const cl=Math.max(1,Math.round(u)),sep=kw>=6?1:0,rc=m=>m<60?BASS:m<84?MID:LEAD,P=R.piano;
