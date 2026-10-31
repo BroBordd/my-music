@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>MY MUSIC</title>
-<style>html,body{margin:0;height:100%;background:#0a0c18;overflow:hidden;overscroll-behavior:none}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}</style>
+<style>html,body{margin:0;height:100%;background:#05060c;overflow:hidden;overscroll-behavior:none}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}</style>
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
@@ -26,19 +26,21 @@ const rate=()=>Math.pow(2,st/12);
 function ctx(){if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();gain=ac.createGain();gain.gain.value=vol;an=ac.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=0;fb=new Uint8Array(an.frequencyBinCount);gain.connect(an);an.connect(ac.destination)}if(ac.state!=="running")ac.resume()}
 const fmt=s=>{s=Math.max(0,s|0);return(s/60|0)+":"+String(s%60).padStart(2,"0")};
 // ---- layout (musicwin.c, full screen, no map/custom switch)
-let W,H,u,bt,pad,g,cell,c2,cb,R={},hi,nw,kw,kx0,eq={},rowh,lrows,dpr=1;
+let win={x:0,y:0,w:0,h:0},W,H,u,bt,pad,g,cell,c2,cb,R={},hi,nw,kw,kx0,eq={},rowh,lrows,dpr=1;
 const WI=[0,-1,1,-1,2,3,-1,4,-1,5,-1,6],isW=m=>WI[m%12]>=0,wIdx=m=>((m-LO)/12|0)*7+WI[m%12];
 function layout(){dpr=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;X.setTransform(dpr,0,0,dpr,0,0);
   u=Math.min(W,H)/360;const I=Math.round;bt=Math.max(1,I(1.5*u));pad=Math.max(3,I(6*u));g=Math.max(2,I(3*u));cell=Math.max(2,I(1.7*u));c2=Math.max(2,I(1.3*u));cb=Math.max(8,I(14*u));
-  hi=W<H?96:108;nw=wIdx(hi)+1;const hdr=pad+th(cell)+cell*2+th(cell)+pad,laneH=th(c2)+g+I(28*u),hintH=th(c2)+g,ctrl=Math.max(18,I(28*u));rowh=Math.max(th(c2)+4,I(18*u));
-  let pianoH=I(80*u),eqH=I(110*u);lrows=2;const base=hdr+ctrl+pad+ctrl+pad+pad+laneH+pad+hintH+pad;
-  let free=H-base-eqH-pianoH-2*bt-2*rowh;if(free>0){const add=Math.floor(free*.5/rowh);lrows+=add;free-=add*rowh;eqH+=Math.floor(free*.6);pianoH+=free-Math.floor(free*.6)}
-  else{const cut=-free,e=Math.min(cut,eqH-I(30*u));eqH-=e;pianoH-=cut-e}
-  const ix=pad,iw=W-2*pad;let y=hdr;
-  eq.gap=1;eq.q=Math.max(2,Math.floor((eqH-(EQR-1))/EQR));eqH=EQR*eq.q+EQR-1;eq.bg=Math.max(1,Math.floor(eq.q/3));eq.bw=Math.max(1,Math.floor((iw-(BANDS-1)*eq.bg)/BANDS));const ew=BANDS*eq.bw+(BANDS-1)*eq.bg;eq.x=ix+Math.floor((iw-ew)/2);eq.y=y;eq.h=eqH;y+=eqH+pad;
+  const m=Math.max(4,I(8*u));hi=W<H?96:108;nw=wIdx(hi)+1;const hdr=pad+th(cell)+cell*2+th(cell)+pad,laneH=th(c2)+g+I(28*u),hintH=th(c2)+g,ctrl=Math.max(18,I(28*u));rowh=Math.max(th(c2)+4,I(18*u));
+  let pianoH=I(80*u),eqH=I(110*u);lrows=4;const fixed=hdr+pad+ctrl+pad+ctrl+pad+pad+laneH+pad+hintH+pad,avail=H-2*m;let full=fixed+eqH+pianoH+lrows*rowh+2*bt;
+  while(full>avail&&lrows>2){lrows--;full-=rowh}
+  if(full>avail){let cut=full-avail;const e=Math.min(cut,eqH-I(30*u));eqH-=e;cut-=e;pianoH-=cut;full=avail}
+  eq.gap=1;eq.q=Math.max(2,Math.floor((eqH-(EQR-1))/EQR));eqH=EQR*eq.q+EQR-1;
+  win={x:m,y:Math.floor((H-full)/2),w:W-2*m,h:full};const ix=win.x+pad,iw=win.w-2*pad;let y=win.y+hdr;
+  eq.bg=Math.max(1,Math.floor(eq.q/3));eq.bw=Math.max(1,Math.floor((iw-(BANDS-1)*eq.bg)/BANDS));const ew=BANDS*eq.bw+(BANDS-1)*eq.bg;eq.x=ix+Math.floor((iw-ew)/2);eq.y=y;eq.h=eqH;y+=eqH+pad;
   R.pause={x:ix,y,w:ctrl,h:ctrl};const sw=iw-ctrl-g*2,half=Math.floor((sw-g*2)/2);R.vol={x:ix+ctrl+g*2,y,w:half,h:ctrl};R.pit={x:R.vol.x+half+g*2,y,w:sw-half-g*2,h:ctrl};y+=ctrl+pad;
   const lw=cb+g*2+tw("LOOP",c2)+pad;R.loop={x:ix+iw-lw,y,w:lw,h:ctrl};R.seek={x:ix,y,w:iw-lw-g*2,h:ctrl};y+=ctrl+pad;
-  R.list={x:ix,y,w:iw,h:lrows*rowh+2*bt};y+=R.list.h+pad;R.lane={x:ix,y,w:iw,h:laneH};y+=laneH+pad;R.hint={x:ix,y,w:iw,h:hintH};y+=hintH;R.piano={x:ix,y,w:iw,h:H-y-pad};
+  R.list={x:ix,y,w:iw,h:lrows*rowh+2*bt};y+=R.list.h+pad;R.lane={x:ix,y,w:iw,h:laneH};y+=laneH+pad;R.hint={x:ix,y,w:iw,h:hintH};y+=hintH;R.piano={x:ix,y,w:iw,h:pianoH};
+  win.h=R.piano.y+R.piano.h+pad-win.y;
   kw=Math.max(2,Math.floor(iw/nw));kx0=ix+Math.floor((iw-kw*nw)/2);scrollMax();}
 function scrollMax(){const m=Math.max(0,tracks.length*rowh-(R.list.h-2*bt));listScroll=Math.min(listScroll,m);return m}
 const wr=m=>({x:kx0+wIdx(m)*kw,y:R.piano.y,w:kw,h:R.piano.h}),br=m=>{const bw=Math.floor(kw*.62),bh=Math.floor(R.piano.h*.62),b=kx0+(wIdx(m-1)+1)*kw;return{x:b-Math.floor(bw/2),y:R.piano.y,w:bw,h:bh}};
@@ -91,8 +93,8 @@ function drawSlider(r,label,val,v,def,held){const k=kwid(),lh=th(c2);T(label,r.x
   const zone=r.h-lh-g,tkh=Math.max(3,Math.round(5*u)),kh=Math.min(zone,Math.round(18*u)),cy=r.y+lh+g+Math.floor(zone/2);
   F(r.x,cy-(tkh>>1),r.w,tkh,LINE,.86);F(r.x+1,cy-(tkh>>1)+1,r.w-2,tkh-2,DARK);const kx=r.x+Math.floor((r.w-k)*v);F(r.x+1,cy-(tkh>>1)+1,kx+(k>>1)-r.x-1,tkh-2,HELD);
   F(r.x+Math.floor((r.w-k)*def)+(k>>1),cy-(tkh>>1)+tkh,1,(tkh>>1)+1,GREY);F(kx,cy-(kh>>1),k,kh,held?WH:[236,238,246]);F(kx,cy-(kh>>1),k,1,[10,12,24]);F(kx,cy-(kh>>1)+kh-1,k,1,[10,12,24])}
-function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[10,12,24]);F(0,0,W,bt,WH,.8);F(0,H-bt,W,bt,WH,.8);F(0,0,bt,H,WH,.8);F(W-bt,0,bt,H,WH,.8);
-  const tx=pad,ty=pad;T(playing||scrub?"NOW PLAYING":"PAUSED",tx,ty,cell,HELD);T(title||"PICK A TRACK",tx,ty+th(cell)+cell*2,cell,WH);
+function draw(dt){X.clearRect(0,0,W,H);F(0,0,W,H,[5,6,12]);F(win.x,win.y,win.w,win.h,WH,.78);F(win.x+bt,win.y+bt,win.w-2*bt,win.h-2*bt,[10,12,24],.96);
+  const tx=win.x+pad,ty=win.y+pad;T(playing||scrub?"NOW PLAYING":"PAUSED",tx,ty,cell,HELD);T(title||"PICK A TRACK",tx,ty+th(cell)+cell*2,cell,WH);
   // eq
   for(let i=0;i<BANDS;i++){const n=Math.floor(lvl[i]*EQR+.5),cx=eq.x+i*(eq.bw+eq.bg);for(let k=0;k<n;k++){const f=k/(EQR-1);F(cx,eq.y+eq.h-(k+1)*eq.q-k*eq.gap,eq.bw,eq.q,f<.5?[110,230,160]:f<.8?[255,214,110]:[255,110,110])}
     const pk=Math.floor(peak[i]*EQR+.5);if(pk>n&&pk<=EQR&&pk>0)F(cx,eq.y+eq.h-pk*eq.q-(pk-1)*eq.gap,eq.bw,eq.q,WH,.9);F(cx,eq.y+eq.h,eq.bw,1,WH,.16)}
