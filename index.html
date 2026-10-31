@@ -2,11 +2,11 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>MY MUSIC</title>
-<style>html,body{margin:0;height:100%;background:#05060c;overflow:hidden;overscroll-behavior:none}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}</style>
+<style>html,body{margin:0;height:100%;background:#05060c;overflow:hidden;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;user-select:none;-webkit-user-select:none}</style>
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const BUILD="2026-10-31T12:49:24Z";
+const BUILD="2026-10-31T12:58:51Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
 const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
@@ -191,6 +191,9 @@ function tick(ts){const dt=Math.min(.1,(ts-lt)/1e3||0);lt=ts;const pv=pos;
   if(!grabs.size||![...grabs.values()].some(k=>k.t==="list")){if(Math.abs(listVel)>8){const mx=scrollMax(),n=listScroll+listVel*dt;listScroll=Math.min(mx,Math.max(0,n));if(n<0||n>mx)listVel=0;else listVel*=Math.exp(-3.2*dt)}else listVel=0}
   update(dt,pv);draw(dt);requestAnimationFrame(tick)}
 addEventListener("resize",layout);
+// not long-pressable: no context menu / selection / drag haptic
+for(const ev of["contextmenu","selectstart","dragstart"])addEventListener(ev,e=>e.preventDefault(),{capture:true});
+cv.addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
 (async function(){layout();
   try{const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`);if(!r.ok)throw 0;tracks=(await r.json()).filter(f=>f.name.endsWith(".ogg")).map(f=>({file:f.name,name:f.name.slice(0,-4).replace(/_/g," ").toUpperCase()}))}
   catch(e){try{tracks=await(await fetch("tracks.json")).json()}catch(_){}}
