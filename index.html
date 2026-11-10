@@ -6,7 +6,7 @@
 </head><body><canvas id="c"></canvas>
 <script>
 const REPO="BroBordd/vessel",DIR="music",RAW=`https://raw.githubusercontent.com/${REPO}/main/${DIR}/`;
-const BUILD="2026-10-31T12:58:51Z";
+const BUILD="2026-11-10T20:23:27Z";
 const cv=document.getElementById("c"),X=cv.getContext("2d");
 // ---- the game's 5x7 pixel font (font.c)
 const GL="0E11111F111111,1E11111E11111E,0E11101010110E,1E11111111111E,1F10101E10101F,1F10101E101010,0E11101711110F,1111111F111111,0E04040404040E,0702020202120C,11121418141211,1010101010101F,111B1515111111,11191513111111,0E11111111110E,1E11111E101010,0E11111115120D,1E11111E141211,0F10100E01011E,1F040404040404,1111111111110E,11111111110A04,1111111515150A,11110A040A1111,11110A04040404,1F01020408101F,0E11131519110E,040C040404040E,0E11010204081F,1E01010E01011E,02060A121F0202,1F101E0101110E,0608101E11110E,1F010204080808,0E11110E11110E,0E11110F01020C,000000000C0408,00000000000C0C,04040404040004,0E110102040004,04040800000000,0000001F000000,19190204081313,000C0C000C0C00,0004041F040400".split(",").map(h=>[0,1,2,3,4,5,6].map(i=>parseInt(h.substr(i*2,2),16)));
@@ -51,14 +51,14 @@ let el=null,elNode=null;
 function stopSrc(){if(src){src.onended=null;try{src.stop()}catch(e){}src=null}}
 function dropEl(){if(!el)return;el.onended=el.onwaiting=el.onplaying=el.oncanplay=el.onloadedmetadata=null;try{el.pause();el.removeAttribute("src");el.load()}catch(e){}try{elNode.disconnect()}catch(e){}el=elNode=null}
 function ended(){if(loop){pos=0;if(el&&!buf){el.currentTime=0;el.play()}else play()}else if(cur<tracks.length-1)load(cur+1,true);else{playing=false;pos=0}}
-function play(){ctx();if(el&&!buf){if(el.ended)el.currentTime=0;el.playbackRate=rate();el.play().catch(()=>{});playing=true;return}if(!buf)return;stopSrc();if(pos>=dur-.05)pos=0;const s=ac.createBufferSource();src=s;s.buffer=buf;s.playbackRate.value=rate();s.connect(gain);s.onended=()=>{if(src!==s)return;src=null;ended()};s.start(0,pos);lastT=ac.currentTime;playing=true}
+function play(){ctx();if(el&&!buf){if(el.ended)el.currentTime=0;el.playbackRate=rate();el.play().catch(()=>{});playing=true;return}if(!buf)return;stopSrc();if(pos>=dur-.05)pos=0;const s=ac.createBufferSource();src=s;s.buffer=buf;s.loop=loop;s.playbackRate.value=rate();s.connect(gain);s.onended=()=>{if(src!==s)return;src=null;ended()};s.start(0,pos);lastT=ac.currentTime;playing=true}
 function pause(){if(el&&!buf)el.pause();stopSrc();playing=false}
 function switchOver(){if(!buf||!el||scrub)return;const was=playing&&!el.paused;pos=el.currentTime;dropEl();if(was)play()}
 function mkRev(){if(rev||!buf)return;rev=ac.createBuffer(buf.numberOfChannels,buf.length,buf.sampleRate);for(let c=0;c<buf.numberOfChannels;c++){const a=buf.getChannelData(c),b=rev.getChannelData(c);for(let i=0,n=a.length;i<n;i++)b[i]=a[n-1-i]}}
 function grain(v){const a=Math.abs(v);if(a<.04)return;const G=.07,t=ac.currentTime,b=v>0?buf:rev,off=v>0?pos:dur-pos,len=Math.min(G*a,b.duration-off-.001);if(len<=.005)return;
   const s=ac.createBufferSource(),gg=ac.createGain(),real=len/a,f=Math.min(.012,real/3);s.buffer=b;s.playbackRate.value=a;gg.gain.setValueAtTime(0,t);gg.gain.linearRampToValueAtTime(1,t+f);gg.gain.setValueAtTime(1,t+real-f);gg.gain.linearRampToValueAtTime(0,t+real);s.connect(gg);gg.connect(gain);s.start(t,off,len)}
 async function load(i,auto){const id=++loadId;loading=true;stopSrc();dropEl();playing=false;cur=i;buf=rev=vsd=null;pos=0;dur=0;scrub=null;title=tracks[i].name;ctx();
-  const url=RAW+tracks[i].file,e=new Audio();el=e;e.crossOrigin="anonymous";e.preload="auto";e.preservesPitch=e.mozPreservesPitch=e.webkitPreservesPitch=false;e.src=url;
+  const url=RAW+tracks[i].file,e=new Audio();el=e;e.crossOrigin="anonymous";e.preload="auto";e.loop=loop;e.preservesPitch=e.mozPreservesPitch=e.webkitPreservesPitch=false;e.src=url;
   elNode=ac.createMediaElementSource(e);elNode.connect(gain);
   e.onloadedmetadata=()=>{if(id===loadId&&!buf&&isFinite(e.duration))dur=e.duration};
   e.oncanplay=e.onplaying=()=>{if(id===loadId)loading=false};e.onwaiting=()=>{if(id===loadId&&playing)loading=true};e.onended=()=>{if(id===loadId&&!buf)ended()};
@@ -93,7 +93,7 @@ cv.addEventListener("pointermove",e=>{const k=grabs.get(e.pointerId);if(!k)retur
   else if(k.t==="key"){const m=keyAt(x,y),v=voices.get(e.pointerId);if(m>=0&&(!v||v.m!==m))noteOn(e.pointerId,m)}});
 const up=e=>{const k=grabs.get(e.pointerId);if(!k)return;grabs.delete(e.pointerId);const x=e.clientX,y=e.clientY,inside=e.type==="pointerup";
   if(k.t==="pause"&&inside&&inr(R.pause,x,y))playing?pause():play();
-  else if(k.t==="loop"&&inside&&inr(R.loop,x,y))loop=!loop;
+  else if(k.t==="loop"&&inside&&inr(R.loop,x,y)){loop=!loop;if(src)src.loop=loop;if(el)el.loop=loop}
   else if(k.t==="seek"&&scrub&&scrub.plain){scrub=null;if(inside&&el){const t=Math.min(dur-.01,Math.max(0,fx(R.seek,x)*dur));el.currentTime=t;pos=t}switchOver()}
   else if(k.t==="seek"&&scrub){const w=scrub.was;scrub=null;if(inside){pos=Math.min(dur-.01,Math.max(0,fx(R.seek,x)*dur))}if(w)play()}
   else if(k.t==="list"){if(k.moved){if(performance.now()-k.lt>90)listVel=0;const cap=9*rowh*12;listVel=Math.max(-cap,Math.min(cap,listVel))}else if(inside&&k.row>=0&&k.row<tracks.length&&k.row!==cur)load(k.row,true)}
@@ -187,7 +187,7 @@ const bs=new Float32Array(BANDS);
 function tick(ts){const dt=Math.min(.1,(ts-lt)/1e3||0);lt=ts;const pv=pos;
   if(!buf){if(el&&!scrub)pos=el.currentTime}
   if(buf&&!(scrub&&scrub.plain)){if(scrub){const d=tgt-pos;sp=Math.max(-8,Math.min(8,d/(dt||.016)*.5));if(Math.abs(d)<.02&&Math.abs(sp)<.3)sp=0;gt+=dt;if(gt>=.05){grain(sp);gt=0}pos=Math.min(dur-.001,Math.max(0,pos+sp*dt))}
-   else if(playing){const t=ac.currentTime;pos+=(t-lastT)*rate();lastT=t;if(pos>dur)pos=dur}}
+   else if(playing){const t=ac.currentTime;pos+=(t-lastT)*rate();lastT=t;if(pos>dur)pos=loop?pos%dur:dur}}
   if(!grabs.size||![...grabs.values()].some(k=>k.t==="list")){if(Math.abs(listVel)>8){const mx=scrollMax(),n=listScroll+listVel*dt;listScroll=Math.min(mx,Math.max(0,n));if(n<0||n>mx)listVel=0;else listVel*=Math.exp(-3.2*dt)}else listVel=0}
   update(dt,pv);draw(dt);requestAnimationFrame(tick)}
 addEventListener("resize",layout);
